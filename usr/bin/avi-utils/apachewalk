@@ -1,0 +1,184 @@
+#! /usr/bin/perl
+
+#Requires: Perl 5.10
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
+## Version 0.14
+
+## This script walks your apache configuration beginning from 
+## the file defined in $conf. It follows all includes and prints
+## to stdout everything that is neither comment nor include. It's 
+## aimed at piping to other utilities - grepping for repeated 
+## configuration, for example.
+
+use strict;
+use 5.010;
+use File::Basename;
+
+##
+# Some less-popular config:
+
+## Default display 'mode':
+my $output = "both";
+
+## Separator between 'file' and 'line' column when printing both:
+my $filenameLineSeparator = "\t";
+
+## If non-zero, strips indentation from config file lines when printing.
+my $suppressLeadingWhitespace = 1;
+
+## How we determine that a line is an 'Include' directive. Making this
+## lower-case might make it work on PHP scripts, for example. 
+## I can't work out how to stick the options in a variable, so we're not
+## using that yet. Answers on a postcard, please.
+my $includeRegexPattern = "^Include";
+###my $includeRegexOptions = "";
+
+if (!$ARGV[0]){
+	print "Usage:\n";
+	print "\t$0 <FILE> [OUTPUT]\n\n";
+	print "FILE should be Apache's core configuration file. Often\n";
+	print "/etc/apache/httpd.conf or /etc/apache2/apache2.conf\n";
+	print "\n";
+	print "If FILE is supplied as 'help' you get a bunch of help\n";
+	print "OUTPUT dictates the data output. Options are 'file', 'line' or\n";
+	print "'both'. 'file' causes all Included files to be output, 'line' \n";
+	print "outputs every line of every included 'file'. 'both' prints each\n";
+	print "line, prepended by the file it's in. Handy for grepping.\n";
+	print "Default is $output\n";
+	print "Currently, only the first letter is needed to match, and it's\n";
+	print "case-insensitive\n";
+	exit 1;
+}
+if ($ARGV[0] =~ m/^help$/){
+	&help;
+}
+
+my $conf = $ARGV[0];
+
+$output = $ARGV[1] || $output;
+my ($printFilename, $printLine);
+given ($output){
+	when(/^b/i){
+		($printLine, $printFilename) = (1,1);
+	}
+	when(/^f/i){
+		$printLine = 0;
+		$printFilename = 1;
+	}
+	when(/^l/i){
+		$printLine = 1;
+		$printFilename = 0;
+	}
+}
+		
+
+&walk_file($conf);
+
+sub walk_file() {
+	my $filename = shift;
+
+	my $filePath = dirname($filename);
+
+	if(($printFilename == 1) && ($printLine != 1)){
+		print "$filename\n";
+	}
+
+	open (my $fh, "< $filename") or die ("Error opening file: $filename");
+
+	while(<$fh>){
+		given ($_){
+			when ((/^#/) || (/^$/)){
+				sleep 0;
+			}
+			## By default, read this as
+			#    (/^Include/){
+			when (m/$includeRegexPattern/){
+				my $Includepath = (split(/\s/, $_))[1];
+				if ($Includepath =~ m/^\//){
+					&include($Includepath);
+				}else{
+					&include($filePath."/".$Includepath);					
+				}
+			}
+
+			default{
+				if (($printLine == 1) && ($printFilename != 1)){
+					my $line = $_;
+					if($suppressLeadingWhitespace != 0){$line =~ s/^\s+//};
+					print $line;
+				}elsif (($printLine == 1) && ($printFilename == 1)){
+					my $line = $_;
+					if($suppressLeadingWhitespace != 0){$line =~ s/^\s+//};
+					print $filename.$filenameLineSeparator.$line;
+				}
+			}
+		}
+	}
+	close($fh);
+}	
+
+sub include() {
+	my $path = shift;
+	chomp $path;
+	if(($path =~ /\*.+/) || ($path =~ /\/$/)){
+		$path =~ s/\/$/\/\*/;
+		foreach(glob($path)){
+			print $1;
+			&walk_file($_);
+		}
+	}else{
+		if(-f $path && -s $path){
+			&walk_file($path);
+		}elsif(-d $path){
+			&walk_dir($path);
+		}else{
+			if (-s $path){
+				last;
+			}
+		}
+	}
+}
+
+
+sub walk_dir() {
+	my $dirname = shift;
+	opendir(DIR, $dirname);
+	foreach(sort(readdir(DIR))){
+		&walk_file($_) if ($_ !~ /^./);
+	}
+}
+
+sub help {
+
+print <<EOF
+
+ApacheWalk walks your apache config files. 
+
+When provided with the path to an Apache (or similar, see below) config file,
+apachewalk will walk its way down the file, printing every configuration
+directive it finds. If it finds an Include, it will instead follow the Include
+to that file, and walk through that, doing same for any includes it finds.
+
+By default, it prints the contents of the line prepended by the file it was
+found in, which is handy for working out exactly where you've defined (or
+mis-defined) something - grep for the misconfigured directive.
+
+Because of the way the path resolution works, everything's based on the path
+you provide - if you provide a relative path, all filenames and paths listed
+are at relative paths. If you provide an absolute path, all filenames and
+paths output are at absolute paths.
+
+
+This does nothing that is specific to apache. All the logic it does, really,
+is follow 'Include' directives. 
+
+There are some variables defined towards the top of the script, which are
+unlikely to be of much use to anyone, but might be. They're commented, open
+the script in a text editor to see them.
+
+EOF
+
+}

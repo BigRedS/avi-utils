@@ -1,0 +1,123 @@
+#! /usr/bin/perl
+
+#Requires: grep (grep)
+
+## Files to check. These are reasonable defaults for debian. Anything ending with an asterisk is
+## treated as a directory, and each of its contents is processed.
+
+my @files=("/home/avi/bin/test/etc/hosts.deny", "/home/avi/bin/test/var/lib/denyhosts/*");
+#my @files=("/etc/hosts.deny","/var/lib/denyhosts/*");
+
+## How to find an IP address in iptables. Has " $ip" appended to it, and is executed in the shell
+$iptables = "/sbin/iptables -L | grep ";
+
+## How to stop and start denyhosts. 
+my $stopDenyHosts = "/etc/init.d/denyhosts stop";
+my $startDenyHosts = "/etc/init.d/denyhosts start";
+
+$ip = $ARGV[0];
+
+## check the validity of the IP address:
+if ($ip !~ m/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/){&usage;}
+foreach(split/\./, $ip){
+	if ($_ > 255){&usage;}
+}
+
+
+my @found;	# Keep track of which files contained the IP address
+
+
+foreach my $file (@files){
+	if($file =~ m/\*$/){
+		chop $file;	#remove trailing *
+		chop $file;	#remove trailing /
+		&processDirectory($file, $ip);
+	}else{
+		&removeIP($file, $ip);
+	}
+}
+
+# Check how many files matched
+$matches = @found;
+if ($matches > 0){
+	print "Found $ip in $matches files:\n";
+	foreach(@found){
+		print "\t$_\n";
+	}
+}else{
+	print "Didn't find $ip in any of denyhosts' files\n";
+	if(`which iptables`){
+		print "Would you like to check for its existence in\n";
+		print "iptables?\n";
+		print "Enter 'y' for yes, anything else for no\n";
+		my $ans = <STDIN>;
+		chomp $stdin;
+		if ($ans =~ m/^y$/){
+			print "running $iptables $ip ...\n";
+			`$iptables $ip`
+		}
+	}
+}
+
+exit 0;
+
+sub processDirectory() {
+	my $directory = shift;
+	my $ip = shift;
+#	if (!-d $directory){print "Warning: $directory is not a directory. It might not exist";}
+	opendir(my $dh, $directory) or die "Error opening $directory";
+	my @files = readdir($dh);	
+	closedir $dh;
+	
+	foreach (@files){
+		unless(/^\./){
+			$file = $directory."/".$_;
+			&removeIP($file, $ip);
+		}
+	}
+}
+
+sub removeIP() {
+	my $file = shift;
+	my $ip = shift;
+
+	my $tempFile = $file."+";
+
+	open(my $f, "<", $file) or die "Error opening $file for reading";
+	open(my $t, ">", $tempFile) or die "Error opening temp file $tempFile for writing";
+
+	my $found = 0;
+	while(<$f>){
+		unless(/$ip/){
+			print $t $_ or die "Error writing to temp file $tempFile";
+		}else{
+			$found = 1;
+		}
+	}
+	
+	if ($found != 0){ push(@found, $file); }
+	
+	
+	close($f);
+	close($t);
+#	my $backupFile = $file.".old";
+#	rename($file, $backupFile) or die "Error creating backup file at $file\.old";
+	rename($tempFile, $file) or die "Error moving temp file $tempFile to permanent file $file";
+
+}
+
+
+sub usage(){
+	print <<EOF
+Usage:
+	$0 <IP address>
+
+Removes IP address from DenyHosts' files, and restarts
+DenyHosts. Prompts to check with iptables if the IP
+address is not blocked by DenyHosts.
+
+Checks for a valid IP address before starting, which 
+might be why you're seeing this.
+
+EOF
+}

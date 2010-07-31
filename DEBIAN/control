@@ -1,0 +1,8 @@
+Package: avi-utils
+Version: 0.01-3
+Section: base
+Priority: optional
+Architecture: all
+Depends: perl (>=5.10)
+Maintainer: Avi Greenbury
+Description: Avi's Handy Utilities

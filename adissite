@@ -1,0 +1,128 @@
+#! /usr/bin/perl
+
+#Depends:
+
+if(!$ARGV[1]){&usage();}
+
+my $documentRoot = $ARGV[0];
+my $configFile = $ARGV[1];
+
+my $tempFile = $configFile."~";
+my $backupFile = $configFile."old";
+
+open ($f, "<", $configFile);
+my @lines = <$f>;
+close($f);
+
+&commentOutVhost($documentRoot);
+
+
+sub commentOutVhost() {
+	my $documentRoot=shift;	
+		print "Looking for DocumentRoot $documentRoot\n";
+	my $midst;
+	unless ($midst = &getMidst($documentRoot)){
+		print "Vhost not found.\n";
+		exit 1;
+	}
+#		print "Found midst $midst\n";
+	my $beginning = &getBeginning($midst);
+#		print "Found beginning $beginning\n";	
+	my $end = &getEnd($midst);
+#		print "Found end $end\n";
+
+	if ($beginning < $end){
+		print "Found virtualhost:\n";
+		for (my $i=$beginning; $i<=$end; $i++){
+			print "\t$lines[$i]";
+		}
+
+		print "Comment out this vhost? [y|N]\n";
+		my $answer = <STDIN>;
+		if ($answer =~ /^y$/i){
+			&commentOut($beginning, $end);
+		}
+	}else{
+		print "Found a virtualhost, but it ends before it begins:\n";
+		print "\tbegins: $beginning\n";
+		print "\tends:   $end\n";
+		print "I think this is a job for a human :)\n";
+		exit 1;
+	}
+}
+
+sub commentOut() {
+	my $beginning = shift;
+	my $end = shift;
+
+	rename($configFile, $backupFile) or die "Error backing up $configFile to $backupFile";
+
+	open($f, ">", $configFile) or die "Error opening $configFile for writing";
+
+	for(my $i=0; $i <= @lines; $i++){
+
+		if( ($i <= $end) && ($i >= $beginning) ){
+			print $f "#".$lines[$i];
+		}else{
+			print $f $lines[$i];
+		}
+	}
+	close($f);
+}
+
+sub getMidst() {
+	my $documentRoot = shift;
+	my $count = 0;
+	my $regex;
+	
+	foreach my $line (@lines){
+		if (($line =~ /DocumentRoot\s+\"?$documentRoot\"?/i) && ($line !~ /^\s?\#/)){
+			return $count;
+		}
+		$count++;
+	}
+	return undef;
+}
+
+sub getBeginning(){
+	my $midst = shift;
+	my $return;
+	for (my $i=$midst; $i > 1; $i--){
+		if (@lines[$i] =~ /.*<\s*VirtualHost\s+.+>/i){
+			return $i;
+		}
+	}
+}
+
+sub getEnd(){
+	my $midst = shift;
+	my $return;
+	for (my $i=$midst; $i<=@lines; $i++){
+		if(@lines[$i] =~ /.*<\/VirtualHost\s*>/i){
+			return $i;
+		}
+	}
+}
+
+sub usage(){
+print <<EOF
+Usage:
+	$0 [DocumentRoot] [file]
+
+Identifies VirtualHosts in the file specified by their
+DocumentRoot definition. Finds the first non-commented-
+out vhost with the supplied DocumentRoot and displays 
+its <VirtualHost> stanza, then asks if you'd like to 
+disable it. Do not include the phrase 'DocumentRoot', 
+just the path.
+
+Currently ignores commented out vhosts, so should only 
+find 'active' vhosts (which is normally the kind you're 
+after)
+
+Example:
+
+adissite /home/avi/public_html /etc/apache/httpd.conf
+
+EOF
+}

@@ -8,8 +8,8 @@
 my @files=("/home/avi/bin/test/etc/hosts.deny", "/home/avi/bin/test/var/lib/denyhosts/*");
 #my @files=("/etc/hosts.deny","/var/lib/denyhosts/*");
 
-## How to find an IP address in iptables. Has " $ip" appended to it, and is executed in the shell
-$iptables = "/sbin/iptables -L | grep ";
+## How to find an IP address in the firewall. Has " $ip" appended to it, and is executed in the shell
+$iptables = "/sbin/iptables -nL | grep ";
 
 ## How to stop and start denyhosts. 
 my $stopDenyHosts = "/etc/init.d/denyhosts stop";

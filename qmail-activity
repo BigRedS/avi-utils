@@ -1,13 +1,6 @@
 #! /usr/bin/perl
 
-# This is free software. It is distributed under the
-# terms of the 2-clause BSD license. See ./license.txt.
-
-## Version 0.001
-
-## Iterates through a list of hostnames, and inspects syslog for
-## mention of them, then says who's had attention and makes an 
-## educated guess as to when it last had activity.
+#Depends: zcat (bzip2)
 
 # Doesn't yet know when to stop with log rotations.
 
@@ -51,6 +44,8 @@ close $hl;
 # Uses zcat for the gzipped ones 'cause it's easier than shouting
 # at CPAN.
 
+my $zcat = `which zcat`;
+
 my @log;
 opendir(my $dh, $logDir) or die "Error opening \$logDir $logDir";
 my @logFiles = readdir($dh);
@@ -63,7 +58,7 @@ foreach my $logFile (@logFiles){
 		push(@logFilesUsed, $logFile);
 		$logFile = $logDir."/".$logFile;
 		if ($logFile =~ /\.gz$/){
-			foreach my $line (`zcat $logFile`){
+			foreach my $line (`$zcat $logFile`){
 				foreach my $allowedMonth (@allowedMonths){
 					if (($line =~ /\@/) && $line =~ (/^$allowedMonth/)){
 						push (@log, $line);

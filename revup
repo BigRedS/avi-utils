@@ -28,5 +28,4 @@ Basically returns the canonical domain name for
 the host at some given domain name.
 
 END
-#exit 1;
 }

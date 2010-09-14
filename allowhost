@@ -5,8 +5,8 @@
 ## Files to check. These are reasonable defaults for debian. Anything ending with an asterisk is
 ## treated as a directory, and each of its contents is processed.
 
-#my @files=("/etc/hosts.deny","/var/lib/denyhosts/*");
-my @files=("/home/avi/bin/test/etc/hosts.deny","/home/avi/bin/test/var/lib/denyhosts/*");
+my @files=("/etc/hosts.deny","/var/lib/denyhosts/*");
+#my @files=("/home/avi/bin/test/etc/hosts.deny","/home/avi/bin/test/var/lib/denyhosts/*");
 
 ## How to find an IP address in the firewall. Has " $ip" appended to it, and is executed in backticks
 $iptables = "iptables -nL | grep ";

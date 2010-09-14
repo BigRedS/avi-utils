@@ -1,0 +1,32 @@
+#! /usr/bin/perl
+
+use Socket;
+use strict;
+
+my $domainname = $ARGV[0] || &leave;
+
+my $host=gethostbyname($domainname);
+my $ipaddr=join('.', unpack('C4', $host));
+my $ip = inet_aton($ipaddr);
+my $host = gethostbyaddr($ip, AF_INET); 
+print $host."\n";
+
+sub leave {
+	&usage();
+	exit 1;
+}
+
+sub usage {
+	print <<END
+	
+Usage:
+	revup <DOMAIN-NAME>
+
+Performs a DNS lookup for the domain name, then
+a reverse lookup for the resulting IP address. 
+Basically returns the canonical domain name for
+the host at some given domain name.
+
+END
+#exit 1;
+}

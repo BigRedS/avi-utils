@@ -11,14 +11,14 @@ if (!$ARGV[1]){
 		print "\t$_\n";
 	}
 }else{
-	print "Registrant :: Registrar :: Registered date :: Expiry date :: name servers\n";
+	print "Domain :: Registrant :: Registrar :: Registered date :: Expiry date :: name servers\n";
 	my %domains;
 	sleep 1;
 	foreach my $domain (@ARGV){
 		my @info = &GetDomainInfo($domain);
 		my ($registrant,$registrar,$registeredOn,$renewal,$ns) = @info;
 		my $nameservers = join(' ', @$ns);
-		print $registrant."::".$registrar."::".$registeredOn."::".$renewal."::".$nameservers;
+		print $domain."::".$registrant."::".$registrar."::".$registeredOn."::".$renewal."::".$nameservers;
 		print "\n";
 	}
 }

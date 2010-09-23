@@ -85,8 +85,6 @@ sub GetDomainInfo(){
 					}
 				}
 			}
-		}else{	
-			print "ERROR";
 		}
 	}else{
 		$registrant = "not a supported tld";

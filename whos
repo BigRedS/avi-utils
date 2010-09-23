@@ -1,0 +1,101 @@
+#! /usr/bin/perl
+
+# Does whois lookups, only returns the useful data.
+
+use strict;
+
+if (!$ARGV[1]){
+	my ($registrant,$registrar,$registeredOn,$renewal,$ns) = &GetDomainInfo($ARGV[0]);
+	print "Registrant:\t$registrant \nRegistrar:\t$registrar \nRegistered:\t$registeredOn \nExpires:\t$renewal \nNameservers:\n";
+	foreach(@$ns){
+		print "\t$_\n";
+	}
+}else{
+	print "Registrant :: Registrar :: Registered date :: Expiry date :: name servers\n";
+	my %domains;
+	sleep 1;
+	foreach my $domain (@ARGV){
+		my @info = &GetDomainInfo($domain);
+		my ($registrant,$registrar,$registeredOn,$renewal,$ns) = @info;
+		my $nameservers = join(' ', @$ns);
+		print $registrant."::".$registrar."::".$registeredOn."::".$renewal."::".$nameservers;
+		print "\n";
+	}
+}
+
+sub GetDomainInfo(){
+	my $domain = shift;
+	my ($registrant, $registrar, $registeredOn, $renewal, @nameservers);
+
+	if ($domain =~ /uk$/){
+		my $whois = `whois $domain`;
+		if ($whois =~ /Registrant:\W+([\w\s]+)\n[.\s\n]+/){
+			$registrant = $1;
+			chomp $registrant;
+		}
+		if ($whois =~ /Registrar:[\W\s]+([\w\s]+)/){
+			$registrar = $1;
+			chomp $registrar;
+		}
+		if ($whois =~ /Registered on:\s+(\d\d\-\w\w\w\-\d\d\d\d)/){
+			$registeredOn = $1;
+			chomp $registeredOn;
+		}
+		if ($whois =~ /Renewal date:\s+(\d\d\-\w\w\w-\d\d\d\d)/){
+			$renewal = $1;
+			chomp $renewal;
+		}
+		if ($whois =~ /Name servers:\n(.+)WHOIS lookup made/s){
+			my $ns = $1;
+			foreach my $nameserver ( split (/\n/, $ns)){
+				if ($nameserver =~ (/\s*([\S]+)\s*/)){
+					$nameserver = $1;
+					if ($nameserver !~ /^$/){
+						push @nameservers, $nameserver;
+					}
+				}
+			}
+		}
+
+	}elsif($domain =~ /(com|org|edu|net)$/){
+		my $whois = `whois $domain`;
+		if ($whois =~ /Registrars\.Registrant:\n\s+(.+)\n/){
+			$registrant = $1;
+			chomp $registrant;
+		}
+		if ($whois =~ /Registration Service Provider:\n\s+(.+)[,\n]/){
+			$registrar = $1;
+			chomp $registrar;
+		}
+		if ($whois =~ /Record created on (\d\d\-\w\w\w\-\d\d\d\d)/){
+			$registeredOn = $1;
+			chomp $registeredOn
+		}
+		if ($whois =~ /Record expires on (\d\d\-\w\w\w\-\d\d\d\d)/){
+			$renewal = $1;
+			chomp $renewal;
+		}
+		if ($whois =~ /Domain servers in listed order:\n(.+)Domain status/s){
+			my $ns = $1;
+			foreach my $nameserver ( split (/\n/, $ns)){
+				if ($nameserver =~ (/\s*([\S]+)\s*/)){
+					$nameserver = $1;
+					if ($nameserver !~ /^$/){
+						push @nameservers, $nameserver;
+					}
+				}
+			}
+		}else{	
+			print "ERROR";
+		}
+	}else{
+		$registrant = "not a supported tld";
+		$registrar = "I can only do .uk .com .net .edu and .org domains"
+	}
+
+	return $registrant, $registrar, $registeredOn, $renewal, \@nameservers;
+}
+
+
+
+

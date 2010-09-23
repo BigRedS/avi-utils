@@ -1,0 +1,58 @@
+#! /bin/bash
+
+# Stick subdomains you want to check for here, between the BEGIN and END markers
+# bear in mind this is all bash script, so they needs to be commented out.
+#BEGIN
+#mx
+#mx0
+#mx1
+#mx2
+#mx5
+#mx10
+#mx20
+#ns
+#mail1
+#mail2
+#www
+#ftp
+#gopher
+#news
+#cvs
+#git
+#svn
+#cpanel
+#webmail
+#irc
+#smtp
+#pop
+#imap
+#chat
+#forum
+#forums
+#wiki
+#END
+
+if [ -z $1 ]; then
+	echo "Usage: subdomain [DOMAIN-NAME]"
+	echo "Checks for the existence of DNS records for common subdomains"
+	echo "Edit the script to update the dictionary to check against"
+	exit 1
+fi
+
+DICTIONARY=$(cat $0 | sed -n '/BEGIN$/,/END$/p' | grep -v "END" | grep -v "BEGIN" | sed -n 's/#//p')
+DOMAIN=$1
+
+#qdn=$subdomain.$DOMAIN
+
+for i in $DICTIONARY; do
+	subdomain=$i.$DOMAIN
+	record=$( dig $subdomain | grep -v "^;" | grep -v "SOA" | grep $subdomain ) 
+
+	if [ -z "$record" ]; then
+		sleep 0
+	else
+		echo $record
+	fi
+
+done
+

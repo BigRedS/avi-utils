@@ -93,6 +93,18 @@ revup
 Given a domain name, does a reverse lookup on the first of its A records. Basically, attempts to find the canonical
 domain name of the server at some non-canonical domain name.
 
+
+subdomain
+---------
+
+         Usage: subdomain [DOMAIN-NAME]
+         Checks for the existence of DNS records for common subdomains
+         Edit the script to update the dictionary to check against
+
+A bad replacement for an axfr request that you're not allowed to make. There's a list of hash-prepended subdomains at 
+the top of the file. The script goes through these, and checks for the existence of each one as a subdomain of the
+domain it's given as an argument, and print the dig output for each that does exist. 
+
 qmail-activity
 --------------
 

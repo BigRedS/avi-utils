@@ -57,6 +57,8 @@ fi
 DICTIONARY=$(cat $0 | sed -n '/BEGIN$/,/END$/p' | grep -v "END" | grep -v "BEGIN" | sed -n 's/#//p')
 DOMAIN=$1
 
+dig $DOMAIN | grep -v "^;" | grep -v "SOA" | grep $DOMAIN
+
 for i in $DICTIONARY; do
 	subdomain=$i.$DOMAIN
 	record=$( dig $subdomain | grep -v "^;" | grep -v "SOA" | grep $subdomain ) 

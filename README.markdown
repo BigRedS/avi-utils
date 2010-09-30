@@ -15,11 +15,11 @@ shouldn't be too difficult.
 adissite
 --------
 
-       adissite [DocumentRoot] [file]
+  adissite [DocumentRoot] [file]
 
-       Identifies VirtualHosts in the file specified by their
-       DocumentRoot definition. Based on a string comparison. 
-       Do not include the 'DocumentRoot' part.
+  Identifies VirtualHosts in the file specified by their
+  DocumentRoot definition. Based on a string comparison. 
+  Do not include the 'DocumentRoot' part.
 
 
 
@@ -31,11 +31,11 @@ can't help but make these things prompt before writing files.
 allowhost
 ---------
 
-	allowhost <IP address>
-
-	Removes IP address from DenyHosts' files, and restarts
-	DenyHosts. Prompts to check with iptables if the IP
-	address is not blocked by DenyHosts.
+  alowhost <IP address>
+  
+  Removes IP address from DenyHosts' files, and restarts
+  DenyHosts. Prompts to check with iptables if the IP
+  address is not blocked by DenyHosts.
 
 
 
@@ -47,22 +47,22 @@ restarts denyhosts at the end of it all; also copes with the same IP address app
 apachewalk
 ----------
 
-         apachewalk <FILE> [OUTPUT]
+  apachewalk <FILE> [OUTPUT]
 
-         Reads Apache configuration file at FILE, following any
-         Include directives and outputs the complete configuration
-         according to OUTPUT. 
+  Reads Apache configuration file at FILE, following any
+  Include directives and outputs the complete configuration
+  according to OUTPUT. 
 
-         FILE should be Apache's core configuration file. Often
-         /etc/apache/httpd.conf or /etc/apache2/apache2.conf
+  FILE should be Apache's core configuration file. Often
+  /etc/apache/httpd.conf or /etc/apache2/apache2.conf
 
-         OUTPUT dictates the output format:
+  OUTPUT dictates the output format:
 
-         file	print every filename included in the config
-         line	print every line of configuration
-         both	for each line of configuration, print the file it
-                was found in and the line found. Handy for grepping
-                for "where did I configure that?" type questions.
+  file	print every filename included in the config
+  line	print every line of configuration
+  both	for each line of configuration, print the file it
+        was found in and the line found. Handy for grepping
+        for "where did I configure that?" type questions.
 
 
 The script starts at a given apache config file, and prints out every line of config. It follows all Includes, so does actually 
@@ -82,13 +82,12 @@ One day, adissite will accept input from it :)
 revup
 -----
 
-        revup <DOMAIN-NAME>
+  revup <DOMAIN-NAME>
         
-        Performs a DNS lookup for the domain name, then
-        a reverse lookup for the resulting IP address. 
-        Basically returns the canonical domain name for
-        the host at some given domain name.
-
+  Performs a DNS lookup for the domain name, then
+  a reverse lookup for the resulting IP address. 
+  Basically returns the canonical domain name for
+  the host at some given domain name.
 
 Given a domain name, does a reverse lookup on the first of its A records. Basically, attempts to find the canonical
 domain name of the server at some non-canonical domain name.
@@ -97,13 +96,15 @@ domain name of the server at some non-canonical domain name.
 subdomain
 ---------
 
-         Usage: subdomain [DOMAIN-NAME]
-         Checks for the existence of DNS records for common subdomains
-         Edit the script to update the dictionary to check against
+  Usage: subdomain [DOMAIN-NAME]
+  Checks for the existence of DNS records for common subdomains
+  Edit the script to update the dictionary to check against
 
-A bad replacement for an axfr request that you're not allowed to make. There's a list of hash-prepended subdomains at 
-the top of the file. The script goes through these, and checks for the existence of each one as a subdomain of the
-domain it's given as an argument, and print the dig output for each that does exist. 
+Tries to be a replacement for a zone transfer. It's designed for when someone wants you to take over the NS serving for
+their domain name, but they can't or won't get you the zone data. It basically does a dig on a bunch of popular 
+subdomains (which are stored at the top of the script) and returns the details if those records exist.
+If it looks like there's a wildcard domain, it says so and exists. One day it'll go through the dictionary and return all
+the subdomains *not* covered by the wildcard.
 
 qmail-activity
 --------------

@@ -16,7 +16,7 @@ if (!$ARGV[1]){
 }else{
 	print "Domain :: Registrant :: Registrar :: Registered date :: Expiry date :: name servers\n";
 	my %domains;
-	sleep 10;
+	sleep 30;
 	foreach my $domain (@ARGV){
 		my @info = &GetDomainInfo($domain);
 		my ($registrant,$registrar,$registeredOn,$renewal,$ns) = @info;
@@ -59,7 +59,7 @@ sub GetDomainInfo(){
 				}
 			}
 		}
-	}elsif($domain =~ /(com|org|edu|net)$/){
+	}elsif($domain =~ /(com|org|edu|net|tv)$/){
 		my $whois = `whois $domain`;
 		if ($whois =~ /Registrars\.Registrant:\n\s+(.+)\n/){
 			$registrant = $1;
@@ -88,7 +88,7 @@ sub GetDomainInfo(){
 				}
 			}
 		}
-	}elsif($domain =~ /(biz|info)$/){
+	}elsif($domain =~ /(biz|info|mobi)$/){
 		my @whois = `whois $domain`;
 		foreach(@whois){
 			if (/^Registrant Name:\s*(\w+[\s\w+]*).+\n/){
@@ -100,7 +100,7 @@ sub GetDomainInfo(){
 			if ( (/^Domain Registration Date:\s+(.+)\n/) || (/^Created On:(.+)/) ){
 				$registeredOn = $1;
 			}
-			if (/^\w*\s?Expiration Date:\s+(.+)\n/){
+			if ( (/^\w*\s?Expiration Date:\s+(.+)\n/) || (/^Expiration Date:(.+)/) ){
 				$renewal = $1;
 			}
 		}
@@ -115,7 +115,7 @@ sub GetDomainInfo(){
 		}
 	}else{
 		$registrant = "not a supported tld";
-		$registrar = "I can only do .uk .com .net .edu .org and .biz domains"
+		$registrar = "I can only do .uk .com .net .edu .org .biz .info .mobi and .tv domains"
 	}
 	return $registrant, $registrar, $registeredOn, $renewal, \@nameservers;
 }

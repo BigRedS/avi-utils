@@ -2,6 +2,9 @@
 
 # Does whois lookups, only returns the useful data.
 
+# If there's only one argument, looks up that domain and gives human-readable output
+# If there's two or more arguments, returns a double-colon demarked table of output
+
 use strict;
 
 if (!$ARGV[1]){
@@ -13,7 +16,7 @@ if (!$ARGV[1]){
 }else{
 	print "Domain :: Registrant :: Registrar :: Registered date :: Expiry date :: name servers\n";
 	my %domains;
-	sleep 1;
+	sleep 10;
 	foreach my $domain (@ARGV){
 		my @info = &GetDomainInfo($domain);
 		my ($registrant,$registrar,$registeredOn,$renewal,$ns) = @info;
@@ -56,7 +59,6 @@ sub GetDomainInfo(){
 				}
 			}
 		}
-
 	}elsif($domain =~ /(com|org|edu|net)$/){
 		my $whois = `whois $domain`;
 		if ($whois =~ /Registrars\.Registrant:\n\s+(.+)\n/){
@@ -86,14 +88,34 @@ sub GetDomainInfo(){
 				}
 			}
 		}
+	}elsif($domain =~ /(biz|info)$/){
+		my @whois = `whois $domain`;
+		foreach(@whois){
+			if (/^Registrant Name:\s*(\w+[\s\w+]*).+\n/){
+				$registrar = $1;
+			}
+			if (/^Sponsoring Registrar:\s*(\w+[\s\w+]*).*\n/){
+				$registrant = $1;
+			}
+			if ( (/^Domain Registration Date:\s+(.+)\n/) || (/^Created On:(.+)/) ){
+				$registeredOn = $1;
+			}
+			if (/^\w*\s?Expiration Date:\s+(.+)\n/){
+				$renewal = $1;
+			}
+		}
+		@nameservers = grep( /^Name Server:/, @whois);
+		foreach(@nameservers){
+			if ($_ =~ /Name Server:\s*(\S+)\s*\n/){
+				$_ = $1;
+				chomp $_;
+			}else{
+				$_ = undef;
+			}
+		}
 	}else{
 		$registrant = "not a supported tld";
-		$registrar = "I can only do .uk .com .net .edu and .org domains"
+		$registrar = "I can only do .uk .com .net .edu .org and .biz domains"
 	}
-
 	return $registrant, $registrar, $registeredOn, $renewal, \@nameservers;
 }
-
-
-
-

@@ -4,6 +4,9 @@ avi-utils
 This is a collection of scripts I've written that I find useful. I make no claims as to their worthiness for anything
 and gladly invite comments and criticism on any and all of them.
 
+*Files with names ending in '.pl' don't work.*
+
+
 All the scripts expect argument(s); run them with none to get usage information, or read this document. 
 
 I generally try not to deviate from perl core, but some of them need really common unixy utilities (top, grep etc),
@@ -103,4 +106,15 @@ It goes through the contents of qmail's rcpthosts file, and checks each address 
 domain last saw activity. By default, it looks for three months but doesn't notice if the logs aren't that old.
 
 
+subdomains
+----------
 
+           Usage: subdomains [DOMAIN-NAME]
+           Checks for the existence of DNS records for common subdomains
+           Edit the script to update the dictionary to check against
+
+
+Has a list of popular subdomains at the top of the file. Given a domain name as an argument, checks for DNS records for
+each of the subdomains, returning DiG's output for any that exist. Handy for migrating domains in the absence of a 
+zone file or the like. It's probably an idea to have an incredibly unlikely domain name in there as a check against
+wildcards.

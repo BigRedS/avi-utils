@@ -1,4 +1,5 @@
 #! /bin/bash
+# Yeah, bash. I was bullied into it.
 
 # Stick subdomains you want to check for here, between the BEGIN and END markers
 # bear in mind this is all bash script, so they need to be commented out.
@@ -10,9 +11,15 @@
 #mx5
 #mx10
 #mx20
+#ns0
+#ns1
+#ns2
 #ns
 #mail1
 #mail2
+#mail10
+#mail20
+#mail30
 #www
 #ftp
 #gopher
@@ -30,15 +37,27 @@
 #forum
 #forums
 #wiki
+<<<<<<< HEAD
 #pop3
 #exchange
 #dns0
 #dns1
 #ThisIsATestForWildcardDNSRecords
+=======
+#dev
+#support
+#login
+#exchange
+#exch2web
+#owa
+#m
+#mobile
+#wap
+>>>>>>> origin/master
 #END
 
 if [ -z $1 ]; then
-	echo "Usage: subdomains [DOMAIN-NAME]"
+	echo "Usage: subdomain [DOMAIN-NAME]"
 	echo "Checks for the existence of DNS records for common subdomains"
 	echo "Edit the script to update the dictionary to check against"
 	exit 1
@@ -47,17 +66,24 @@ fi
 DICTIONARY=$(cat $0 | sed -n '/BEGIN$/,/END$/p' | grep -v "END" | grep -v "BEGIN" | sed -n 's/#//p')
 DOMAIN=$1
 
-#qdn=$subdomain.$DOMAIN
+dig $DOMAIN | grep -v "^;" | grep -v "SOA" | grep -v "NS" |  grep $DOMAIN
 
-for i in $DICTIONARY; do
-	subdomain=$i.$DOMAIN
-	record=$( dig $subdomain | grep -v "^;" | grep -v "SOA" | grep $subdomain ) 
+wildcard=sdfsdfasdkjfewjkarenawjsnhdfnhasdjfn.$DOMAIN
+wildrecord=$( dig $wildcard | grep -v "^;" | grep -v "SOA" | grep $wildcard )
 
-	if [ -z "$record" ]; then
-		sleep 0
-	else
-		echo $record
-	fi
+if [ -z "$wildrecord" ]; then
 
-done
-
+	for i in $DICTIONARY; do
+		subdomain=$i.$DOMAIN
+		record=$( dig $subdomain | grep -v "^;" | grep -v "SOA" | grep $subdomain ) 
+	
+		if [ -z "$record" ]; then
+			sleep 0
+		else
+			echo $record
+		fi
+	done
+else
+	echo "It looks like there's a wildcard record here. Avi hasn't worked out how"
+	echo "to make that happen gracefully in Bash yet."
+fi

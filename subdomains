@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # Stick subdomains you want to check for here, between the BEGIN and END markers
-# bear in mind this is all bash script, so they needs to be commented out.
+# bear in mind this is all bash script, so they need to be commented out.
 #BEGIN
 #mx
 #mx0
@@ -30,10 +30,15 @@
 #forum
 #forums
 #wiki
+#pop3
+#exchange
+#dns0
+#dns1
+#ThisIsATestForWildcardDNSRecords
 #END
 
 if [ -z $1 ]; then
-	echo "Usage: subdomain [DOMAIN-NAME]"
+	echo "Usage: subdomains [DOMAIN-NAME]"
 	echo "Checks for the existence of DNS records for common subdomains"
 	echo "Edit the script to update the dictionary to check against"
 	exit 1

@@ -7,8 +7,11 @@ use Socket;
 
 my (@vhosts, %VirtualHosts, %system);
 my $vhostConfig = "/home/avi/bin/test/apache-activity/*";
-my @localIPAddresses = &getLocalIpAddresses();
-
+my @localIPAddresses;
+&getLocalIPAddresses();
+foreach(@localIPAddresses){
+	print;
+}
 # Get all vhost config into %virtualHosts
 &getVhostInfo($vhostConfig);
 foreach(@vhosts){
@@ -16,7 +19,7 @@ foreach(@vhosts){
 }
 
 
-print "\n||======================================================================\n";
+print "||======================================================================\n";
 
 foreach(keys(%VirtualHosts)){
 	my $ServerName = $_;
@@ -29,17 +32,17 @@ foreach(keys(%VirtualHosts)){
 		my @ServerAliases = @{$VirtualHosts{$_}{'ServerAliases'}};
 	
 #		print "\n> - - - - - - - - - - <\n";
-		print "|| ServerName: $ServerName";
-		print "\n|| Config file: $ConfigFile";
-		print "\n|| DocumentRoot: $DocumentRoot";
-		print "\n|| Files in DocumentRoot: ".&filesInDocumentRoot($DocumentRoot);
-		print "\n|| Log File: $CustomLog ($LogFormat)";
-		print "\n|| Last mention in logs:".&lastMentionInLogs($ServerName);
-		print "\n|| Domain name points here? ".&domainNamePointsHere($ServerName);
+		print   "|| ServerName:  $ServerName";
+		print "\n|| Config file:  $ConfigFile";
+		print "\n|| DocumentRoot:  $DocumentRoot";
+		print "\n|| Files in DocumentRoot:  ".&filesInDocumentRoot($DocumentRoot);
+		print "\n|| Log File:  $CustomLog ($LogFormat)";
+		print "\n|| Last mention in logs:  ".&lastMentionInLogs($ServerName);
+		print "\n|| Domain name points here?  ".&domainNamePointsHere($ServerName);
 		print "\n||======================================================================\n";
 	}
 }
-print "\n";
+#print "\n";
 
 
 # # #  Here be subroutines # # #
@@ -140,7 +143,7 @@ sub splitVhostFile(){
 	my @vhost;
 	push(@vhost, $file);
 	for($count = 0; $count <= $fileLines; $count++){
-		if( ($fileContents[$count] !~ /^\s?\#/) && ($fileContents[$count] !~ /^$/) ) {
+#		if( ($fileContents[$count] !~ /^\s?\#/) && ($fileContents[$count] !~ /^$/) ) {
 			my $line = $fileContents[$count];
 			chomp $line;
 			push(@vhost, $line);
@@ -151,7 +154,7 @@ sub splitVhostFile(){
 				undef(@vhost); 
 				push(@vhost, $file);
 			}
-		}
+#		}
 	}
 }
 
@@ -189,25 +192,27 @@ sub parseVhostConfig(){
 	my $filename = $vhostConfig[0];
 
 	foreach(@vhostConfig){
-		if (/^\s*DocumentRoot\s+/){
+		print"$_\n" ;
+		if (/DocumentRoot/i){
+			print $_;
 			$DocumentRoot = $_;
 		}
-		if (/^\s*ServerName\s+([\w\.]+)/){
+		if (/^\s*ServerName\s+([\w\.]+)/i){
 			$ServerName = $1;
 			chomp $ServerName;
 			push (@ServerAliases, $ServerName);
 			last;
 		}
-		if (/^\s*ServerAlias\s+(.+)\s*/){
+		if (/^\s*ServerAlias\s+(.+)\s*/i){
 			$ServerAlias = $1;
 			my @AliasArray = split(/\s/, $ServerAlias);
 			push(@ServerAliases, @AliasArray)
 		}
-		if (/^\s*CustomLog\s+(.+)\s*/){
+		if (/^\s*CustomLog\s+(.+)\s*/i){
 			($CustomLog,$LogFormat) = split(/\s/,$1);
 		}
 	}
-	if ( ($filename =~ /000-default/) || ($filename =~ /default-ssl/) ){
+	if ( ($filename =~ /000-default/i) || ($filename =~ /default-ssl/i) ){
 		$ServerName = $filename;
 	}
 
@@ -237,14 +242,17 @@ sub parseVhostConfig(){
 # Returns a ref to an array that contains all the IP addresses on 
 # this system. To be used when we check whether any of the 
 # ServerAliases point at this server
-sub getLocalIpAddresses(){
+sub getLocalIPAddresses(){
 	my @ips;
 	my @iplist = `ifconfig -a`;
+	if ($? != 0){
+		print STDERR "WARN: Couldn't get local IP addresses\n";
+	}
 	foreach (@iplist){
 		if (/addr:(\d{0,3}\.\d{0,3}\.\d{0,3}\.\d{0,3})\s/){
 			if ($1 !~ /^127/){
 				my $ip = $1;
-				push (@ips, $ip);
+				push (@localIPAddresses, $ip);
 			}
 		}
 	}

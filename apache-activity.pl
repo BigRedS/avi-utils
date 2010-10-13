@@ -2,18 +2,12 @@
 
 use strict;
 use Data::Dumper;
-#use warnings;
-
-
-# check whether any ServerAliases point here
-# check for last write to CustomLog or for last entry in central logs
-# check for files in DocumentRoot
+use Socket;
 
 
 my (@vhosts, %VirtualHosts, %system);
 my $vhostConfig = "/home/avi/bin/test/apache-activity/*";
-# Get system properties into $system:
-%system = %{&getSystemInfo};
+my @localIPAddresses = &getLocalIpAddresses();
 
 # Get all vhost config into %virtualHosts
 &getVhostInfo($vhostConfig);
@@ -22,44 +16,90 @@ foreach(@vhosts){
 }
 
 
-#my $ips = $system{'ips'};
-#my @ips = @$ips;
-#foreach(@ips){
-#		print $_;
-#}
-
+print "\n||======================================================================\n";
 
 foreach(keys(%VirtualHosts)){
-	print "\n$_ ";
-	my $CustomLog = $VirtualHosts{$_}{'CustomLog'};
-	my $LogFormat = $VirtualHosts{$_}{'LogFormat'};
-	my $ConfigFile = $VirtualHosts{$_}{'configFile'};
-	my $numAliases = $VirtualHosts{$_}{'NumAliases'};
-	my $DocumentRoot = $VirtualHosts{$_}{'DocumentRoot'};
-	my @ServerAliases = @{$VirtualHosts{$_}{'ServerAliases'}};
-
-	print "\n\t$ConfigFile";
-
+	my $ServerName = $_;
+	if ($ServerName !~ /\//){
+		my $CustomLog = $VirtualHosts{$_}{'CustomLog'};
+		my $LogFormat = $VirtualHosts{$_}{'LogFormat'};
+		my $ConfigFile = $VirtualHosts{$_}{'configFile'};
+		my $numAliases = $VirtualHosts{$_}{'NumAliases'};
+		my $DocumentRoot = $VirtualHosts{$_}{'DocumentRoot'};
+		my @ServerAliases = @{$VirtualHosts{$_}{'ServerAliases'}};
+	
+#		print "\n> - - - - - - - - - - <\n";
+		print "|| ServerName: $ServerName";
+		print "\n|| Config file: $ConfigFile";
+		print "\n|| DocumentRoot: $DocumentRoot";
+		print "\n|| Files in DocumentRoot: ".&filesInDocumentRoot($DocumentRoot);
+		print "\n|| Log File: $CustomLog ($LogFormat)";
+		print "\n|| Last mention in logs:".&lastMentionInLogs($ServerName);
+		print "\n|| Domain name points here? ".&domainNamePointsHere($ServerName);
+		print "\n||======================================================================\n";
+	}
 }
 print "\n";
 
 
+# # #  Here be subroutines # # #
+
+sub domainNamePointsHere(){
+	my $ServerName = shift;
+	## seriously, there's a better way to do this, though this one's surprisingly 
+	## easy to read:
+	foreach ( @{ $VirtualHosts{$ServerName}{'ServerAliases'} }){
+		my $domainName = $_;
+		my $packed_ip = gethostbyname($domainName);
+		my $ip_address = inet_ntoa($packed_ip);
+		if (grep(/^$ip_address$/, @localIPAddresses)){
+		return "1";
+		}
+	}
+	return "no";
+}
+
+
+# Returns last write to logfiles in epoch time. Zero if non-determinable
+sub lastMentionInLogs(){
+	my $ServerName = shift;
+	my $logFile = $VirtualHosts{$ServerName}{'CustomLog'} ;
+	my $lastlog;
+	if ( -e $logFile ){
+		$lastlog = (stat $logFile)[9];
+	}else{
+		$lastlog = 0;
+	}
+
+	return $lastlog;
+}
 
 
 # Given a directory as an argument, checks whether it's got a likely website in it.
 # Returns zero if the dir's empty or non-existant, else the number of files in it.
+# Returns:
+#  filecount if directory populated
+#  -1 if errors encountered reading directory
+#  -2 if the directory doesn't exist
+#
 ## Doesn't work, since I can't get the DocumentRoot out of the files !?
-sub DocumentRootIsEmpty(){
+sub filesInDocumentRoot(){
 	my $DocumentRoot = shift;
 
-	eval{ 
-		opendir(my $dh, $DocumentRoot);
-		my @files = grep { !/^\./ && !/^logs*/ } readdir($dh);
-		my $filesCount = @files;
-		return $filesCount;
-	};
-	if($@){
-		return -1;
+	if (-e $DocumentRoot){
+		eval{ 
+			opendir(my $dh, $DocumentRoot);
+			my @files = grep { !/^\./ && !/^logs*/ } readdir($dh);
+			my $filesCount = @files;
+			return $filesCount;
+		};
+		if($@){
+			return -1;
+		}else{
+			return 1;
+		}
+	}else{
+		return -2;
 	}
 }
 
@@ -77,19 +117,18 @@ sub getVhostInfo(){
 		foreach(@vhostConfigFiles){
 			if (!/^\./){
 				my $vhostConfigFile = $vhostConfigDir."/".$_;
-#				&parseVhostConfig($vhostConfigFile);
 				&splitVhostFile($vhostConfigFile);
 				
 			}
 		}
 	}else{
-#		&parseVhostConfig($_);
 		&splitVhostFile($_);
 	}
 }
 
-# Is passed a file containing one or more vhost configurations, and splits this 
-# up into arrays, one array per virtualhost. Pushes them to global @vhosts array.
+# Is passed the path to a file containing one or more vhost configurations, and 
+# splits this up into arrays, one array per virtualhost. Pushes them to global 
+# @vhosts array.
 sub splitVhostFile(){
 	my $file = shift;
 	open(my $f, "<", $file);
@@ -104,10 +143,8 @@ sub splitVhostFile(){
 		if( ($fileContents[$count] !~ /^\s?\#/) && ($fileContents[$count] !~ /^$/) ) {
 			my $line = $fileContents[$count];
 			chomp $line;
-#			print "\t\t".$line."\n";
 			push(@vhost, $line);
 			if($fileContents[$count] =~ /^\s?\<\/VirtualHost/i){
-#				print "$file\n\n";
 				my $vhostConf = [@vhost];
 				push(@vhosts, $vhostConf);
 				my $lines = @vhost;
@@ -136,27 +173,22 @@ sub parseVhostConfig(){
 	##   not loop through the array twice
 	##   recognise failure
 
+	my @vhostConfig;
+
 	my $arrayref = shift;
-	my @vhostConfig = @$arrayref;
+	if (defined($arrayref)){
+		@vhostConfig = @$arrayref;
+	}else{
+		print STERR "WARN: parseVhostConfig() called with no argument";
+		return;
+	}
 
 	my ($ServerName, $ServerAlias, $CustomLog, $LogFormat, $DocumentRoot);
 	my (@ServerAliases);
 
 	my $filename = $vhostConfig[0];
 
-#	my $vhostConfigLength = @vhostConfig;
-#	print "--".$vhostConfigLength." ".$filename."\n";
-
-#	if ($filename =~ /aviswe/){
-#		print $filename;
-#		my $vhostConfigSize = @vhostConfig;
-#		print "aaaaaaa $vhostConfigSize nbbbbbbb\n";
-#		foreach(@vhostConfig){
-#			print "\"$_\"\n";
-#		}
-#	}
-
-foreach(@vhostConfig){
+	foreach(@vhostConfig){
 		if (/^\s*DocumentRoot\s+/){
 			$DocumentRoot = $_;
 		}
@@ -197,19 +229,7 @@ foreach(@vhostConfig){
 
 
 
-###########
-# Returns a reference to what will be the contents of %System, which is a 
-# hash of local system properties and (soon) Apache defaults.
-sub getSystemInfo() {
-	my %hash;
-
-	my $ips = &getLocalIpAddresses();
-	$hash{'ips'} = $ips ;
-
-	return \%hash;
-}
-
-
+# # # # # # # # 
 
 # These are the subs that getSystemInfo() calls to get its information: 
 

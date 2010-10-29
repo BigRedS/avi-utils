@@ -3,47 +3,56 @@
 use strict;
 use Data::Dumper;
 use Socket;
+use Date::Manip;
 
 
 my (@vhosts, %VirtualHosts, %system);
-my $vhostConfig = "/home/avi/bin/test/apache-activity/*";
+#my $vhostConfig = "/home/avi/bin/test/apache-activity/*";
+my $vhostConfig = "/home/avi/bin/test/etc/apache2/sites-enabled/*";
 my @localIPAddresses;
 &getLocalIPAddresses();
-foreach(@localIPAddresses){
-	print;
-}
 # Get all vhost config into %virtualHosts
 &getVhostInfo($vhostConfig);
 foreach(@vhosts){
+#	print Dumper $_;
 	&parseVhostConfig($_);
 }
 
+my @months=("", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
 
 print "||======================================================================\n";
 
 foreach(keys(%VirtualHosts)){
 	my $ServerName = $_;
+
+#	print ">>".$ServerName."\n";
+#	print Dumper($VirtualHosts{$_});
+
+
+if (1 == 1){	
 	if ($ServerName !~ /\//){
-		my $CustomLog = $VirtualHosts{$_}{'CustomLog'};
+		my @logFiles = @{$VirtualHosts{$_}{'logFiles'}};
 		my $LogFormat = $VirtualHosts{$_}{'LogFormat'};
 		my $ConfigFile = $VirtualHosts{$_}{'configFile'};
 		my $numAliases = $VirtualHosts{$_}{'NumAliases'};
 		my $DocumentRoot = $VirtualHosts{$_}{'DocumentRoot'};
 		my @ServerAliases = @{$VirtualHosts{$_}{'ServerAliases'}};
 	
-#		print "\n> - - - - - - - - - - <\n";
 		print   "|| ServerName:  $ServerName";
+		print "\n|| ServerNames: ";
+		foreach(@ServerAliases){ print "$_ "; }
 		print "\n|| Config file:  $ConfigFile";
 		print "\n|| DocumentRoot:  $DocumentRoot";
 		print "\n|| Files in DocumentRoot:  ".&filesInDocumentRoot($DocumentRoot);
-		print "\n|| Log File:  $CustomLog ($LogFormat)";
+		print "\n|| Log Files: ";
+		foreach(@logFiles) { print "$_ "; }
 		print "\n|| Last mention in logs:  ".&lastMentionInLogs($ServerName);
 		print "\n|| Domain name points here?  ".&domainNamePointsHere($ServerName);
 		print "\n||======================================================================\n";
 	}
+	}
 }
 #print "\n";
-
 
 # # #  Here be subroutines # # #
 
@@ -51,30 +60,64 @@ sub domainNamePointsHere(){
 	my $ServerName = shift;
 	## seriously, there's a better way to do this, though this one's surprisingly 
 	## easy to read:
+	my $return;
 	foreach ( @{ $VirtualHosts{$ServerName}{'ServerAliases'} }){
 		my $domainName = $_;
-		my $packed_ip = gethostbyname($domainName);
-		my $ip_address = inet_ntoa($packed_ip);
-		if (grep(/^$ip_address$/, @localIPAddresses)){
-		return "1";
-		}
+
+		my ($packed_ip, $ip_adress);
+		eval{
+			my $packed_ip = gethostbyname($domainName);
+			my $ip_address = inet_ntoa($packed_ip);
+			if (grep(/^$ip_address$/, @localIPAddresses)){
+			$return = "Yes";
+			}
+		};
+		if($@){$return = "Failed to look up $domainName";}
 	}
-	return "no";
+	$return = "No" if !$return;
+	return $return;
 }
 
 
 # Returns last write to logfiles in epoch time. Zero if non-determinable
 sub lastMentionInLogs(){
 	my $ServerName = shift;
-	my $logFile = $VirtualHosts{$ServerName}{'CustomLog'} ;
-	my $lastlog;
-	if ( -e $logFile ){
-		$lastlog = (stat $logFile)[9];
-	}else{
-		$lastlog = 0;
-	}
+	#my @logFiles = @{VirtualHosts{$serverName}{'logFiles'}};
 
-	return $lastlog;
+#foreach( @{VirtualHosts{$ServerName}{'logFiles'}}){
+#foreach(@logFiles){
+		my $logFile = $_;
+		my ($lastWrite, $interestingLine);
+		if ( -e $logFile ){
+			open (my $f, "<", $logFile);
+			while(<$f>){
+				if (/$ServerName/){$interestingLine = $_;}
+			}
+		}
+		if ($interestingLine){
+			if ($interestingLine =~ /\[(.+\s\+.+)\]/){
+				my ($day, $mon, $year, $hour, $min, $sec, $tz, $rest);
+				($day,$mon,$rest) = split(/\//, $1);
+				($year,$hour,$min,$rest) = split(/:/, $rest);
+				($sec,$tz) = split(/\s/, $rest);
+		
+				for(my $i = 1; $i<13; $i++){
+					if ($months[$i] =~ /$mon/i){
+					$mon = $months[$i];
+					last;
+					}
+				}
+				## $thisdate should be epoch time
+				my $thisDate = "$year-$mon-$day $hour:$min:$sec";
+
+				last;
+			}
+		}
+		if ($thisDate > $date){
+			$date = $thisDate;
+		}
+	}
+	return $date;
 }
 
 
@@ -166,7 +209,7 @@ sub splitVhostFile(){
 # per element
 #
 # %VirtualHosts{$ServerName} = {
-#	CustomLog	=>	where the log file is
+#	logFiles	=>	where the log file is
 #	ServerAliases	=>	array of ServerName and ServerAlias values
 #	NumAliases	=>	count of the above
 #	configFile	=>	which file was parsed
@@ -186,22 +229,16 @@ sub parseVhostConfig(){
 		return;
 	}
 
-	my ($ServerName, $ServerAlias, $CustomLog, $LogFormat, $DocumentRoot);
-	my (@ServerAliases);
+	my ($ServerName, $ServerAlias, $logFile, $LogFormat, $DocumentRoot);
+	my (@ServerAliases, @logFiles);
 
 	my $filename = $vhostConfig[0];
-
 	foreach(@vhostConfig){
-		print"$_\n" ;
-		if (/DocumentRoot/i){
-			print $_;
-			$DocumentRoot = $_;
-		}
+		chomp $_;
 		if (/^\s*ServerName\s+([\w\.]+)/i){
 			$ServerName = $1;
 			chomp $ServerName;
 			push (@ServerAliases, $ServerName);
-			last;
 		}
 		if (/^\s*ServerAlias\s+(.+)\s*/i){
 			$ServerAlias = $1;
@@ -209,13 +246,17 @@ sub parseVhostConfig(){
 			push(@ServerAliases, @AliasArray)
 		}
 		if (/^\s*CustomLog\s+(.+)\s*/i){
-			($CustomLog,$LogFormat) = split(/\s/,$1);
+			($logFile,$LogFormat) = split(/\s/,$1);
+			push(@logFiles, $logFile);
+		}
+		if (/DocumentRoot\s+(.+)\s*/){
+			$DocumentRoot = $1;
 		}
 	}
 	if ( ($filename =~ /000-default/i) || ($filename =~ /default-ssl/i) ){
 		$ServerName = $filename;
 	}
-
+#print Dumper(@vhostConfig);
 
 	if( (exists $VirtualHosts{$ServerName}) && ($filename !~ /000-default/) && ($filename !~ /default-ssl/) ){
 		warn "WARN: found two Vhosts claiming to configure $ServerName. The last one wins (in $filename)\n";
@@ -223,7 +264,7 @@ sub parseVhostConfig(){
 
 	my $numAliases = @ServerAliases;
 	$VirtualHosts{$ServerName} = {
-		CustomLog	=>	$CustomLog,
+		logFiles	=>	\@logFiles,
 		LogFormat	=>	$LogFormat,
 		ServerAliases	=>	\@ServerAliases,
 		NumAliases	=>	$numAliases,

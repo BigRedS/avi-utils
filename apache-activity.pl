@@ -4,7 +4,7 @@ use strict;
 use Data::Dumper;
 use Socket;
 use Date::Manip;
-
+use Time::Local;
 
 my (@vhosts, %VirtualHosts, %system);
 #my $vhostConfig = "/home/avi/bin/test/apache-activity/*";
@@ -38,16 +38,16 @@ if (1 == 1){
 		my $DocumentRoot = $VirtualHosts{$_}{'DocumentRoot'};
 		my @ServerAliases = @{$VirtualHosts{$_}{'ServerAliases'}};
 	
-		print   "|| ServerName:  $ServerName";
-		print "\n|| ServerNames: ";
-		foreach(@ServerAliases){ print "$_ "; }
-		print "\n|| Config file:  $ConfigFile";
-		print "\n|| DocumentRoot:  $DocumentRoot";
-		print "\n|| Files in DocumentRoot:  ".&filesInDocumentRoot($DocumentRoot);
+#		print   "|| ServerName:  $ServerName";
+#		print "\n|| ServerNames: ";
+#		foreach(@ServerAliases){ print "$_ "; }
+#		print "\n|| Config file:  $ConfigFile";
+#		print "\n|| DocumentRoot:  $DocumentRoot";
+#		print "\n|| Files in DocumentRoot:  ".&filesInDocumentRoot($DocumentRoot);
 		print "\n|| Log Files: ";
 		foreach(@logFiles) { print "$_ "; }
 		print "\n|| Last mention in logs:  ".&lastMentionInLogs($ServerName);
-		print "\n|| Domain name points here?  ".&domainNamePointsHere($ServerName);
+#		print "\n|| Domain name points here?  ".&domainNamePointsHere($ServerName);
 		print "\n||======================================================================\n";
 	}
 	}
@@ -82,12 +82,13 @@ sub domainNamePointsHere(){
 # Returns last write to logfiles in epoch time. Zero if non-determinable
 sub lastMentionInLogs(){
 	my $ServerName = shift;
-	#my @logFiles = @{VirtualHosts{$serverName}{'logFiles'}};
+	my @logFiles = @{$VirtualHosts{$ServerName}{'logFiles'} };
 
 #foreach( @{VirtualHosts{$ServerName}{'logFiles'}}){
-#foreach(@logFiles){
+	my ($thisTime, $date, $time);
+	foreach(@logFiles){
 		my $logFile = $_;
-		my ($lastWrite, $interestingLine);
+		my ($lastWrite,$interestingLine);
 		if ( -e $logFile ){
 			open (my $f, "<", $logFile);
 			while(<$f>){
@@ -100,24 +101,24 @@ sub lastMentionInLogs(){
 				($day,$mon,$rest) = split(/\//, $1);
 				($year,$hour,$min,$rest) = split(/:/, $rest);
 				($sec,$tz) = split(/\s/, $rest);
-		
 				for(my $i = 1; $i<13; $i++){
 					if ($months[$i] =~ /$mon/i){
-					$mon = $months[$i];
+					$mon = $i;
 					last;
 					}
 				}
-				## $thisdate should be epoch time
-				my $thisDate = "$year-$mon-$day $hour:$min:$sec";
+				print "($sec,$min,$hour,$day,$mon,$year)";
 
-				last;
+				$thisTime = timelocal($sec,$min,$hour,$day,$mon,$year);
 			}
 		}
-		if ($thisDate > $date){
-			$date = $thisDate;
+		if ($thisTime > $time){
+			print $time;
+			$time = $thisTime;
 		}
 	}
-	return $date;
+
+	return $time;
 }
 
 

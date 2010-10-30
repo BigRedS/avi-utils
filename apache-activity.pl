@@ -157,18 +157,18 @@ sub lastMentionInLogs(){
 ## Doesn't work, since I can't get the DocumentRoot out of the files !?
 sub filesInDocumentRoot(){
 	my $DocumentRoot = shift;
+	my $filesCount;
 
 	if (-e $DocumentRoot){
 		eval{ 
 			opendir(my $dh, $DocumentRoot);
 			my @files = grep { !/^\./ && !/^logs*/ } readdir($dh);
 			my $filesCount = @files;
-			return $filesCount;
 		};
 		if($@){
 			return -1;
 		}else{
-			return 1;
+			return $filesCount;
 		}
 	}else{
 		return -2;

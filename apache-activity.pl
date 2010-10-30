@@ -6,11 +6,20 @@ use Socket;
 use Date::Manip;
 use Time::Local;
 
-my (@vhosts, %VirtualHosts, %system);
-#my $vhostConfig = "/home/avi/bin/test/apache-activity/*";
+## Config:
 my $vhostConfig = "/home/avi/bin/test/etc/apache2/sites-enabled/*";
+# how many seconds old a log file has to be for the site to count as inactive:
+# This is 90 days:
+my $old = 8640000;
+
+
+
+# Handy global vars:
+my (@vhosts, %VirtualHosts, %system, @inactive, @active);
+my @months=("", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
 my @localIPAddresses;
 &getLocalIPAddresses();
+
 # Get all vhost config into %virtualHosts
 &getVhostInfo($vhostConfig);
 foreach(@vhosts){
@@ -18,18 +27,26 @@ foreach(@vhosts){
 	&parseVhostConfig($_);
 }
 
-my @months=("", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
 
-print "||======================================================================\n";
+#print "||======================================================================\n";
 
 foreach(keys(%VirtualHosts)){
 	my $ServerName = $_;
-
-#	print ">>".$ServerName."\n";
-#	print Dumper($VirtualHosts{$_});
-
-
 if (1 == 1){	
+	if ($ServerName !~ /\//){
+		my @logFiles = @{$VirtualHosts{$_}{'logFiles'}};
+		my $ConfigFile = $VirtualHosts{$_}{'configFile'};
+		my $DocumentRoot = $VirtualHosts{$_}{'DocumentRoot'};
+		my @ServerAliases = @{$VirtualHosts{$_}{'ServerAliases'}};
+
+		if ( (&filesInDocumentRoot($DocumentRoot) < 1) || ( (&lastMentionInLogs($ServerName) + $old) < time() ) || (!&domainNamePointsHere($ServerName)) ){
+			push (@inactive, $ServerName);
+		}else{
+			push (@active, $ServerName)
+		}
+	}
+	
+}else{
 	if ($ServerName !~ /\//){
 		my @logFiles = @{$VirtualHosts{$_}{'logFiles'}};
 		my $LogFormat = $VirtualHosts{$_}{'LogFormat'};
@@ -38,20 +55,32 @@ if (1 == 1){
 		my $DocumentRoot = $VirtualHosts{$_}{'DocumentRoot'};
 		my @ServerAliases = @{$VirtualHosts{$_}{'ServerAliases'}};
 	
-#		print   "|| ServerName:  $ServerName";
-#		print "\n|| ServerNames: ";
-#		foreach(@ServerAliases){ print "$_ "; }
-#		print "\n|| Config file:  $ConfigFile";
-#		print "\n|| DocumentRoot:  $DocumentRoot";
-#		print "\n|| Files in DocumentRoot:  ".&filesInDocumentRoot($DocumentRoot);
+		print   "|| ServerName:  $ServerName";
+		print "\n|| ServerNames: ";
+		foreach(@ServerAliases){ print "$_ "; }
+		print "\n|| Config file:  $ConfigFile";
+		print "\n|| DocumentRoot:  $DocumentRoot";
+		print "\n|| Files in DocumentRoot:  ".&filesInDocumentRoot($DocumentRoot);
 		print "\n|| Log Files: ";
 		foreach(@logFiles) { print "$_ "; }
 		print "\n|| Last mention in logs:  ".&lastMentionInLogs($ServerName);
-#		print "\n|| Domain name points here?  ".&domainNamePointsHere($ServerName);
+		print "\n|| Domain name points here?  ".&domainNamePointsHere($ServerName);
 		print "\n||======================================================================\n";
 	}
-	}
 }
+}
+
+print "Active:\n";
+foreach(@active){
+	print "\t$_\n";
+}
+print "Inactive:\n";
+foreach(@inactive){
+	print "\t$_\n";
+}
+
+
+
 #print "\n";
 
 # # #  Here be subroutines # # #
@@ -83,9 +112,8 @@ sub domainNamePointsHere(){
 sub lastMentionInLogs(){
 	my $ServerName = shift;
 	my @logFiles = @{$VirtualHosts{$ServerName}{'logFiles'} };
-
-#foreach( @{VirtualHosts{$ServerName}{'logFiles'}}){
 	my ($thisTime, $date, $time);
+
 	foreach(@logFiles){
 		my $logFile = $_;
 		my ($lastWrite,$interestingLine);
@@ -107,8 +135,6 @@ sub lastMentionInLogs(){
 					last;
 					}
 				}
-				print "($sec,$min,$hour,$day,$mon,$year)";
-
 				$thisTime = timelocal($sec,$min,$hour,$day,$mon,$year);
 			}
 		}
@@ -117,7 +143,6 @@ sub lastMentionInLogs(){
 			$time = $thisTime;
 		}
 	}
-
 	return $time;
 }
 
@@ -187,7 +212,7 @@ sub splitVhostFile(){
 	my @vhost;
 	push(@vhost, $file);
 	for($count = 0; $count <= $fileLines; $count++){
-#		if( ($fileContents[$count] !~ /^\s?\#/) && ($fileContents[$count] !~ /^$/) ) {
+		if( ($fileContents[$count] !~ /^\s?\#/) && ($fileContents[$count] !~ /^$/) ) {
 			my $line = $fileContents[$count];
 			chomp $line;
 			push(@vhost, $line);
@@ -198,7 +223,7 @@ sub splitVhostFile(){
 				undef(@vhost); 
 				push(@vhost, $file);
 			}
-#		}
+		}
 	}
 }
 

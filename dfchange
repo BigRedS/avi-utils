@@ -1,0 +1,92 @@
+#! /usr/bin/perl
+
+my $dir = $ARGV[0];
+my $sleep = $ARGV[1];
+my %output;
+
+my $cmd = "du -xs ${dir}/*";
+
+print "command: $cmd\n";
+
+my @out = `$cmd`;
+
+foreach(@out){
+        my ($size,$dir) = (split(/\s/, $_))[0,1];
+        $output{$dir}[0] = $size;
+}
+sleep $sleep;
+
+my @out = `$cmd`;
+foreach(@out){
+        my ($size,$dir) = split(/\s/, $_);
+        $output{$dir}[1] = $size;
+}
+
+
+foreach(keys(%output)){
+        # since du counts in 512b blocks:
+        $before = scalar ($output{$_}[0] * 512);
+        $after = scalar ($output{$_}[1] * 512);
+        $change = $after - $before;
+        $rate = $change/$sleep;
+
+	$output{$_}[0] = $before;
+	$output{$_}[1] = $after;
+	$output{$_}[2] = $change;
+	$output{$_}[3] = $rate;
+}
+
+my $len1 = 4;
+my $len2 = 6;
+my $len3 = 5;
+my $len4 = 9;
+my $len5 = 12;
+
+foreach(keys(%output)){
+	if (length($_) > $len1){
+                $len1 = length($_);
+        }
+        if (length($output{$_}[0]) > $len2){
+                $len2 = length($output{$_}[0]);
+        }
+        if (length($output{$_}[1]) > $len3){
+                $len3 = length($output{$_}[1]);
+        }
+	if (length($output{$_}[2]) > $len4){
+		$len4 = length($output{$_}[2]);
+	}
+	if (length($output{$_}[3]) > $len5){
+		$len5 = length($output{$_}[3]);
+	}
+}
+$len1+=4;
+
+
+#printf("%-${len}s%-14s%-14s%-14s%-14s", "Path", "Before", "After", "Change (b)" "Change (bps)");
+
+#printf("%-*s | %-*s | %-*s | %-*s | %-*s", $len1, $len2, $len3, $len4, $len5, "File", "Before", "After", "Change", "Rate (mbps)");
+
+printf("%-${len1}s | %-${len2}s | %-${len3}s | %-${len4}s | %-${len5}s", "File", "Before", "After", "Change", "Rate (mbps)  |");
+
+
+print "\n";
+
+foreach(keys(%output)){
+
+	my $before = $output{$_}[0];
+	my $aftere = $output{$_}[1];
+	my $change = $output{$_}[2];
+	my $rate = $output{$_}[3];
+
+#	print "$_ >< $before >< $after >< $change >< $rate\n";
+
+        printf("%-*s | ", $len1 , "$_ ");
+	printf("%-*s | ", $len2 , "$before");
+	printf("%-*s | ", $len3 , "$after");
+	printf("%+-*s | ", $len4 , "$change");
+	printf("%+-*s | ", $len5 , "$rate");
+	print "\n";
+
+
+}
+

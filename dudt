@@ -1,7 +1,9 @@
 #! /usr/bin/perl
 
+&usage() if (!$ARGV[0]);
+
 my $dir = $ARGV[0];
-my $sleep = $ARGV[1];
+my $sleep = $ARGV[1] or 10;
 my %output;
 
 my $cmd = "du -xs ${dir}/*";
@@ -90,3 +92,19 @@ foreach(keys(%output)){
 
 }
 
+sub usage() {
+	print <<EOF;
+$0: show rate of change of directory usage with respect to time.
+
+USAGE:
+	$0 DIRECTORY [PERIOD]
+
+dudt runs 'du' against DIRECTORY, sleeps for PERIOD seconds and then 
+does it again. It then prints out the absolute values, size of change
+and avareage rate of change.
+
+PERIOD defaults to 20 seconds.
+
+EOF
+exit 1;
+}

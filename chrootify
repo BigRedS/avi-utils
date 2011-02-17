@@ -1,0 +1,35 @@
+#! /bin/bash
+
+BINARY=$1
+CHROOT=$2
+
+if [ !$2 ]
+then
+        echo "\t$0"
+        echo "get binaries and their immediate dependencies"
+        echo "into a chroot environment"
+        echo ""
+        echo "Usage: "
+        echo "  $0 BINARY CHROOT"
+        echo ""
+        echo "Copies BINARY into CHROOT, and its dependencies"
+        echo "into the right sort of hierarchy under CHROOT"
+        exit 1
+fi
+
+if [[ "$BINARY" =~ "^/" ]]
+then
+        BINARY_PATH=$BINARY
+else
+        BINARY_PATH=$(which $BINARY)
+fi
+
+echo "cp $BINARY_PATH $CHROOT"
+
+for i in $(ldd $BINARY_PATH | grep "=>" | awk '{print $3}' | grep -v "(0" | sort | uniq)
+do
+        to=$(echo $i | sed -e 's/^\///' )
+        from=$i
+        echo "cp -p $from $CHROOT/$to"
+done
+

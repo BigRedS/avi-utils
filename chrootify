@@ -32,7 +32,6 @@ else
         fi
 fi
 
-echo "B = $BINARY"
 echo "cp $BINARY_PATH $CHROOT"
 
 for i in $(ldd $BINARY_PATH | grep "=>" | awk '{print $3}' | grep -v "(0" | sort | uniq)

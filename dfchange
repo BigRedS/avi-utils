@@ -74,7 +74,7 @@ print "\n";
 foreach(keys(%output)){
 
 	my $before = $output{$_}[0];
-	my $aftere = $output{$_}[1];
+	my $after = $output{$_}[1];
 	my $change = $output{$_}[2];
 	my $rate = $output{$_}[3];
 

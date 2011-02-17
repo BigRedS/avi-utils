@@ -3,7 +3,6 @@
 use strict;
 use Data::Dumper;
 use Socket;
-use Date::Manip;
 use Time::Local;
 
 ## Config:
@@ -32,7 +31,7 @@ foreach(@vhosts){
 
 foreach(keys(%VirtualHosts)){
 	my $ServerName = $_;
-if (1 == 1){	
+if (1 == 11){	
 	if ($ServerName !~ /\//){
 		my @logFiles = @{$VirtualHosts{$_}{'logFiles'}};
 		my $ConfigFile = $VirtualHosts{$_}{'configFile'};

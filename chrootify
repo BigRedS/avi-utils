@@ -3,7 +3,8 @@
 BINARY=$1
 CHROOT=$2
 
-if [ !$2 ]
+
+if [ ! $2 ]
 then
         echo "\t$0"
         echo "get binaries and their immediate dependencies"
@@ -22,8 +23,16 @@ then
         BINARY_PATH=$BINARY
 else
         BINARY_PATH=$(which $BINARY)
+        if [ $? != 0 ]
+        then
+                echo "ERROR: Can't deduce full path to $BINARY"
+                echo "try calling with full path to $BINARY as "
+                echo "argument. Hint: \`which $BINARY\` just failed"
+                exit 1
+        fi
 fi
 
+echo "B = $BINARY"
 echo "cp $BINARY_PATH $CHROOT"
 
 for i in $(ldd $BINARY_PATH | grep "=>" | awk '{print $3}' | grep -v "(0" | sort | uniq)

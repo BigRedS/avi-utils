@@ -14,11 +14,11 @@ my $ifconfig = "/sbin/ifconfig";
 # grep it.
 my(@inactive,@active,@error);
 my %ips = &getIPs;
-my @sites = &getConfiguredSites;
+my %sites = &getConfiguredSites;
 
 my $resolver = Net::DNS::Resolver->new;
 
-foreach(@sites){
+foreach(keys(%sites)){
 	my $site = $_;
 	my $query = $resolver->search($site);
 	if ($query){
@@ -32,7 +32,7 @@ foreach(@sites){
 			}
 		}
 	}else{
-		push(@error,$site);
+		push(@error,[$site, $resolver->errorstring]);
 	}
 }
 
@@ -46,7 +46,7 @@ foreach(@inactive){
 }
 print "Errored:\n";
 foreach(@error){
-	print "\t$_\n";
+	print "\t$$_[0]\t($$_[1])\n";
 }
 
 sub getIPs() {
@@ -67,11 +67,12 @@ sub getConfiguredSites(){
 		print $websitesScriptError;
 		exit 1;
 	}
-	my @sites;
+	my %sites;
 	foreach(`$websitesScript`){
 		if (/.*\:\s*(.+)\n/){
-			push(@sites, $1);
+			my $site = $1;
+			$sites{$site} = ":)";
 		}
 	}
-	return @sites;
+	return %sites;
 }

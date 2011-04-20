@@ -1,8 +1,20 @@
 #! /usr/bin/perl
 
+# qmail-activity
+
+# Expects to be passed a file containing a list of domain names, and parses
+# all the logs it can find for evidence of qmail-related activity on those
+# domains. 
+# Is generally a bit dumb.
+
+# Written by Avi (@avi.co) in 2010
+
+## Todo: Doesn't yet know when to stop with log rotations.
+
 #Depends: zcat (bzip2)
 
-# Doesn't yet know when to stop with log rotations.
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
 
 use strict;
 

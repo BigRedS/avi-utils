@@ -1,5 +1,22 @@
 #! /usr/bin/perl
 
+# dudt
+
+# Measures the change in disk usage of a directory with
+# respect to time (du/dt).
+# Expects the directory to check as an argument, and accepts
+# a second argument which is the number of seconds to wait 
+# between successive 'du'ing. 
+# Outputs before & after sizes, absolute change and mbps 
+# change. 
+
+# Written by Avi (@avi.co) in 2010
+
+#Depends: du (coreutils)
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
 &usage() if (!$ARGV[0]);
 
 my $dir = $ARGV[0];

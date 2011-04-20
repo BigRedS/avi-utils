@@ -1,6 +1,24 @@
 #! /usr/bin/perl
 
-#Depends:
+# adissite
+
+# Meant as an equivalent of a2dissite for Apache  vhosts - comments
+# out a vhost definition in a file containing many vhosts. 
+#
+# Prompts before doing any writing, and leaves a backup file behind, 
+# too
+#
+# Expects to be given a documentroot as its first argument, and an 
+# apache config file as its second; does not follow include 
+# directives
+
+# Written by Avi (@avi.co) in 2009
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
+## Todo: Uncomment this line and make sure it still works:
+#use strict;
 
 if(!$ARGV[1]){&usage();}
 

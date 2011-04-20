@@ -1,18 +1,23 @@
 #! /usr/bin/perl
 
-#Depends: perl (>= 5.10)
-
-# This is free software. It is distributed under the 
-# terms of the 2-clause BSD license. See ./license.txt.
-
-## Version 0.1
+# dumpsplitter
 
 # This script, when passed a MySQL dump file, splits it into one-file-per
 # -database, named such that when processed alphabetically it is as if
 # the whole file was done at once. Each database has a file to itself, with
 # files containing just the 'USE $db' command in between.
+# Designed for times when you've a db dump greater than available memory to
+# upload to a db.
+
+# Written by Avi (@avi.co) in 2009
 
 ## Todo: option to split by table.
+
+#Depends: perl (>= 5.10)
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
 
 use strict;
 use warnings;

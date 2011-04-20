@@ -1,6 +1,21 @@
 #! /bin/bash
 # Yeah, bash. I was bullied into it.
 
+# Subdomains
+
+# Expects to be passed a domain, and performs a DNS lookup for <subdomain>.<domain> 
+# for each of the list below.
+# The plan is to use it to guess what some incoming customer's DNS config might 
+# be if their current registrar is being a bit of a tit.
+
+# Written by Avi (@avi.co) in 2010
+
+## Todo: Should check MX records and, if those also point to a subdomain, look that up, too
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
+
 # Stick subdomains you want to check for here, between the BEGIN and END markers
 # bear in mind this is all bash script, so they need to be commented out.
 #BEGIN
@@ -37,13 +52,11 @@
 #forum
 #forums
 #wiki
-<<<<<<< HEAD
 #pop3
 #exchange
 #dns0
 #dns1
 #ThisIsATestForWildcardDNSRecords
-=======
 #dev
 #support
 #login
@@ -53,7 +66,6 @@
 #m
 #mobile
 #wap
->>>>>>> origin/master
 #END
 
 if [ -z $1 ]; then

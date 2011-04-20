@@ -1,5 +1,18 @@
 #! /usr/bin/perl
 
+# revup
+
+# Performs a DNS lookup for the domain name passed
+# as its first argument, then a reverse lookup for 
+# the resulting IP address. 
+# Basically returns the canonical domain name for
+# the host at some given domain name.
+
+# Written by Avi (@avi.co) in 2010
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
 use Socket;
 use strict;
 

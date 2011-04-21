@@ -17,8 +17,7 @@
 # This is free software. It is distributed under the 
 # terms of the 2-clause BSD license. See ./license.txt.
 
-## Todo: Uncomment this line and make sure it still works:
-#use strict;
+use strict;
 
 if(!$ARGV[1]){&usage();}
 
@@ -28,7 +27,7 @@ my $configFile = $ARGV[1];
 my $tempFile = $configFile."~";
 my $backupFile = $configFile."old";
 
-open ($f, "<", $configFile);
+open (my $f, "<", $configFile);
 my @lines = <$f>;
 close($f);
 
@@ -75,7 +74,7 @@ sub commentOut() {
 
 	rename($configFile, $backupFile) or die "Error backing up $configFile to $backupFile";
 
-	open($f, ">", $configFile) or die "Error opening $configFile for writing";
+	open(my $f, ">", $configFile) or die "Error opening $configFile for writing";
 
 	for(my $i=0; $i <= @lines; $i++){
 

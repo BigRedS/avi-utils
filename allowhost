@@ -4,40 +4,30 @@
 
 # Used to un-deny hosts denied access by denyhosts. Given an IP address
 # as its only argument, looks for and removes it from Denyhosts' files
-# and restarts Denyhosts. If it doesn't find it, will grep iptables 
-# output and report on findings, but not actually manipulate iptables 
-# directly.
+# and restarts Denyhosts.
 
 # written by Avi (@avi.co) in 2010
 
-#Depends: grep (grep), which (debianutils)
+#Depends:
 
 # This is free software. It is distributed under the 
 # terms of the 2-clause BSD license. See ./license.txt.
 
-# # # #
+use strict;
 
 # Files to check. These are reasonable defaults for debian. Anything ending with an asterisk is
 # treated as a directory, and each of its contents is processed.
 
 my @files=("/etc/hosts.deny","/var/lib/denyhosts/*");
-#my @files=("/home/avi/bin/test/etc/hosts.deny","/home/avi/bin/test/var/lib/denyhosts/*");
-
-## How to find an IP address in the firewall. Has " $ip" appended to it, and is executed in backticks
-$iptables = "iptables -nL | grep ";
 
 ## How to stop and start denyhosts. 
 my $stopDenyHosts = "/etc/init.d/denyhosts stop";
 my $startDenyHosts = "/etc/init.d/denyhosts start";
 
-
-
 # End of config. Stop typing! #
 
-
-
 # The array @ARGV contains all arguments to the script. $ARGV[0] is the first:
-$ip = $ARGV[0];
+my $ip = $ARGV[0];
 
 # check the validity of the IP address:
 if ($ip !~ m/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/){&usage;exit 0;}
@@ -61,7 +51,7 @@ foreach my $file (@files){	# for each file in array @files, as scalar $file
 }
 
 
-$matches = @found;	# $matches now contains the number of elements in @found
+my $matches = @found;	# $matches now contains the number of elements in @found
 
 if ($matches > 0){
 	print "Found $ip in $matches files, and removed it from all of them\n";
@@ -75,20 +65,8 @@ if ($matches > 0){
 	`$startDenyHosts`;
 }else{
 	print "Didn't find $ip in any of denyhosts' files\n";
-	if(`which iptables`){	## This test should probably be better. 
-		print "Would you like to check for its existence in\n";
-		print "iptables?\n";
-		print "Enter 'y' for yes, anything else for no\n";
-		my $ans = <STDIN>;
-		chomp $stdin;			#chomp removes trailing linebreaks if they're there
-		if ($ans =~ m/^y$/){
-			print "running $iptables $ip ...\n";
-			`$iptables $ip`
-		}
-	}
+	exit 1;
 }
-
-exit 0;
 
 
 # This sub enters a directory and calls &removeIP() on each file therein
@@ -111,7 +89,7 @@ sub processDirectory() {
 	# as the first argument to removeIP()
 	foreach (@files){
 		unless(/^\./){
-			$file = $directory."/".$_;	
+			my $file = $directory."/".$_;	
 			&removeIP($file, $ip);
 		}
 	}
@@ -124,7 +102,7 @@ sub removeIP() {
 	my $file = shift;
 	my $ip = shift;
 
-	my $tempFile = $file."+";
+	my $tempFile = $file.".tmp";
 	
 	# open(filehandle, read state, file path), where readstate is ro (<) or rw (>)
 	open(my $f, "<", $file) or die "Error opening $file for reading";
@@ -154,13 +132,12 @@ sub removeIP() {
 
 
 sub usage(){
-	print <<EOF
+	print <<EOF;
 Usage:
 	allowhost <IP address>
 
 Removes IP address from DenyHosts' files, and restarts
-DenyHosts. Prompts to check with iptables if the IP
-address is not blocked by DenyHosts.
+DenyHosts
 
 Checks for a valid IP address before starting, which 
 might be why you're seeing this.

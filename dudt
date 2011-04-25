@@ -7,7 +7,7 @@
 # Expects the directory to check as an argument, and accepts
 # a second argument which is the number of seconds to wait 
 # between successive 'du'ing. 
-# Outputs before & after sizes, absolute change and mbps 
+# Outputs before & after sizes, absolute change and MBps 
 # change. 
 
 # Written by Avi (@avi.co) in 2010
@@ -18,12 +18,14 @@
 # terms of the 2-clause BSD license. See ./license.txt.
 
 &usage() if (!$ARGV[0]);
-$| = 1;
+
 my $dir = $ARGV[0];
-my $sleep = $ARGV[1] or 10;
+my $sleep = $ARGV[1] || 20;
 my %output;
 
 my $cmd = "du -xs ${dir}/*";
+
+$| = 1;
 
 my $line = "Running `$cmd`...";
 my $lineLength = length($line);
@@ -34,7 +36,6 @@ foreach(@out){
         my ($size,$dir) = (split(/\s/, $_))[0,1];
         $output{$dir}[0] = $size;
 }
-#sleep $sleep;
 for (my $l = 0; $l <= $lineLength; $l++){
 	print "\b";
 }
@@ -56,7 +57,7 @@ foreach(@out){
 
 
 foreach(keys(%output)){
-        # since du counts in 512b blocks:
+        # since du counts in 512B blocks:
         $before = scalar ($output{$_}[0] * 512);
         $after = scalar ($output{$_}[1] * 512);
         $change = $after - $before;
@@ -93,25 +94,14 @@ foreach(keys(%output)){
 }
 $len1+=4;
 
-
-#printf("%-${len}s%-14s%-14s%-14s%-14s", "Path", "Before", "After", "Change (b)" "Change (bps)");
-
-#printf("%-*s | %-*s | %-*s | %-*s | %-*s", $len1, $len2, $len3, $len4, $len5, "File", "Before", "After", "Change", "Rate (mbps)");
-
-printf("%-${len1}s | %-${len2}s | %-${len3}s | %-${len4}s | %-${len5}s", "File", "Before", "After", "Change", "Rate (mbps)  |");
-
-
+printf("%-${len1}s | %-${len2}s | %-${len3}s | %-${len4}s | %-${len5}s", "File", "Before", "After", "Change", "Rate (MBps)  |");
 print "\n";
 
 foreach(keys(%output)){
-
 	my $before = $output{$_}[0];
 	my $after = $output{$_}[1];
 	my $change = $output{$_}[2];
 	my $rate = $output{$_}[3];
-
-#	print "$_ >< $before >< $after >< $change >< $rate\n";
-
         printf("%-*s | ", $len1 , "$_ ");
 	printf("%-*s | ", $len2 , "$before");
 	printf("%-*s | ", $len3 , "$after");

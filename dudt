@@ -18,23 +18,36 @@
 # terms of the 2-clause BSD license. See ./license.txt.
 
 &usage() if (!$ARGV[0]);
-
+$| = 1;
 my $dir = $ARGV[0];
 my $sleep = $ARGV[1] or 10;
 my %output;
 
 my $cmd = "du -xs ${dir}/*";
 
-print "command: $cmd\n";
-
+my $line = "Running `$cmd`...";
+my $lineLength = length($line);
+print $line
 my @out = `$cmd`;
 
 foreach(@out){
         my ($size,$dir) = (split(/\s/, $_))[0,1];
         $output{$dir}[0] = $size;
 }
-sleep $sleep;
+#sleep $sleep;
+for (my $l = 0; $l <= $lineLength; $l++){
+	print "\b";
+}
+for (my $i = 0; $i <= $sleep; $i++){
+	$line = "Sleeping for $sleep seconds ($i/$sleep)...\r";
+	print $line;
+	sleep 1;
+}
+for (my $l = 0; $l <= (length($line)); $l++){
+	print "\b";
+}
 
+print "Running `$cmd` again...\r";
 my @out = `$cmd`;
 foreach(@out){
         my ($size,$dir) = split(/\s/, $_);

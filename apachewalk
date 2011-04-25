@@ -184,7 +184,7 @@ Options are:
 	which is aimed at Apache config files. When 
 	changing this, be wary of the shell doing bad 
 	things to escaped characters. It might be safest
-	to just set $includeRegexPattern which you can 
+	to just set \$includeRegexPattern which you can 
 	find declared at about line 31
 
 END

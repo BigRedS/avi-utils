@@ -71,7 +71,6 @@ sub walk_file() {
 	}
 
 	open (my $fh, "< $filename") or die ("Error opening file: $filename");
-print "[[[[ $includeRegexPattern ]]]]";
 	while(<$fh>){
 		given ($_){
 			when ((/^#/) || (/^$/)){

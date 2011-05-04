@@ -12,6 +12,8 @@
 
 # Written by Avi (@avi.co) in 2010
 
+##Todo: split size from filename only on one space (make work with filenames with spaces)
+
 #Depends: du (coreutils)
 
 # This is free software. It is distributed under the 

@@ -13,6 +13,7 @@
 # Written by Avi (@avi.co) in 2010
 
 ##Todo: split size from filename only on one space (make work with filenames with spaces)
+##Todo: list files alphabetically or in order of change in size. have as an option?
 
 #Depends: du (coreutils)
 

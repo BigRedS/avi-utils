@@ -1,0 +1,165 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Net::DNS;
+
+my $dir = $ARGV[0];
+my $ifconfig = "/sbin/ifconfig";
+
+opendir(my $d, $dir) or die "Error opening dir $dir";
+my @files = readdir($d);
+closedir($d);
+
+@files = grep(!/^\./, @files);
+
+my %config;
+foreach(@files){
+	my $filepath = $dir."/".$_;
+	if( -d $filepath){
+		&readDir($filepath);	
+	}else{
+		&readFile($filepath);
+	}
+}
+
+# %config is now populated :)
+
+my %ips = &getIPs;
+#ips{'80.87.131.48'} = ":)";
+
+my $resolver = Net::DNS::Resolver->new;
+
+my (%allHere, %noneHere, %neither);
+
+my %results;
+foreach(keys(%config)){
+	my $vhost = $_;
+	my @domains = @{$config{$vhost}};
+	my (@here, @elsewhere, @neither);
+	foreach(@domains){
+	        my $site = $_;
+	        my $query = $resolver->search($site);
+	        if ($query){
+	                foreach my $rr ($query->answer){
+	                        next unless $rr->type eq "A";
+	                        my $Arecord = $rr->address;
+	                        if($ips{$Arecord}){
+	                                push(@here,$site);
+	                        }else{
+	                                push(@elsewhere,[$site, $Arecord]);
+	                        }
+	                }
+	        }else{
+	                push(@neither,$resolver->errorstring);
+		}
+	}
+
+	if ( (!@neither) && (!@elsewhere) ){
+		$allHere{$vhost} = "$domains[0]";
+	}elsif ( (!@neither) && (!@here) ){
+		$noneHere{$vhost} = "$domains[0]";
+	}else{
+		$neither{$vhost}[0] = $domains[0];
+		$neither{$vhost}[1] = [@here];
+		$neither{$vhost}[2] = [@elsewhere];
+		$neither{$vhost}[3] = [@neither];
+	}
+}
+
+print "All Here:\n";
+foreach(keys(%allHere)){
+	print "\t$_ ($allHere{$_})\n";
+}
+print "None Here:\n";
+foreach(keys(%noneHere)){
+	print "\t$_ ($noneHere{$_})\n";
+}
+print "Neither or both ( point here ; point elsewhere ; errors ):\n";
+foreach(keys(%neither)){
+	print "\t$_ ($neither{$_}[0]) ";
+
+	# point here:
+	foreach( @{$neither{$_}[1]} ){
+		print "$_ ";
+	}
+	print ";";
+
+	# point elsewhere:
+	foreach( @{$neither{$_}[2]} ){
+		print "$_ ";
+	}
+	print ";";
+
+	# errors etc.:
+	foreach( @{$neither{$_}[3]} ){
+		print "$_ ";
+	}
+	print ";\n";
+}
+
+sub readDir() {
+	my $dirpath = shift;
+	opendir(my $d, $dirpath);
+	my @files = readdir($d);
+	closedir($d);
+	
+	@files = grep(!/^\./, @files);
+	
+	foreach(@files){
+		my $filepath = $dirpath."/".$_;
+		&readFile($filepath);
+	}
+}
+
+
+sub readFile() {
+	my $filepath = shift;
+
+	my $lineCount = 0;
+	my $isVhost = 0;
+
+	my $vhostBegins = "";
+	my @serverAliases;
+	$serverAliases[0] = "";
+
+	open(my $f, "<", $filepath) or warn "Error opening file $filepath";
+	while(<$f>){
+
+		if ($isVhost > 0){
+			if ($_ =~ /\s*ServerAlias\s+(\S+)/i){
+				@serverAliases = split(/\s+/, $1);
+			}
+			if ($_ =~ /\s*ServerName\s+(\w+)/i){
+			$serverAliases[0] = $1;
+#			push(@serverAliases, $1);
+			}
+		}
+
+		if ($_ =~ /<VirtualH/i){
+			$isVhost = 1;
+			$vhostBegins = $lineCount;
+		}
+		if ($_ =~ /\<\s*\/\s*VirtualHost/i){
+			$isVhost = 0;
+			my $key = $filepath.":".$vhostBegins;
+			$config{$key} = [@serverAliases];
+			@serverAliases = ();
+		}
+		$lineCount ++;
+	}
+		
+}
+
+sub getIPs(){
+        my %ips;
+        my $ifconfigCMD = "$ifconfig -a";
+        foreach(`$ifconfigCMD`){
+                if (/inet addr:(\S+)/){
+                        my $ip = $1;
+                        $ips{$ip} = ":)";
+                }
+        }
+        return %ips;
+}

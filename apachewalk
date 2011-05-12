@@ -33,7 +33,7 @@ my $suppressLeadingWhitespace = 1;
 ## lower-case might make it work on PHP scripts, for example. 
 ## I can't work out how to stick the options in a variable, so we're not
 ## using that yet. Answers on a postcard, please.
-my $includeRegexPattern = "^Include";
+my $includeRegexPattern = "^Include\s*(\S*)\s*\n";
 ###my $includeRegexOptions = "";
 
 #{&usage(); exitif !$ARGV[0];
@@ -91,8 +91,12 @@ sub walk_file() {
 			}
 			## By default, read this as
 			#    (/^Include/){
-			when (m/$includeRegexPattern/){
-				my $Includepath = (split(/\s/, $_))[1];
+#			when (m/$includeRegexPattern/){
+#				my $Includepath = (split(/\s/, $_))[1];
+			my $includeRegexPattern = "^Include\s*(.+)\n";
+			when (/$includeRegexPattern/i){
+#		when (/^Include\s*(.+)\n/i){
+				my $Includepath = $1;
 				if ($Includepath =~ m/^\//){
 					&include($Includepath);
 				}else{

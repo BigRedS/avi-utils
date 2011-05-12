@@ -37,13 +37,10 @@
 #forum
 #forums
 #wiki
-<<<<<<< HEAD
 #pop3
 #exchange
 #dns0
 #dns1
-#ThisIsATestForWildcardDNSRecords
-=======
 #dev
 #support
 #login
@@ -53,7 +50,6 @@
 #m
 #mobile
 #wap
->>>>>>> origin/master
 #END
 
 if [ -z $1 ]; then

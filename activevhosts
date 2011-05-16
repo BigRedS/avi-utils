@@ -27,7 +27,7 @@ foreach(@files){
 # %config is now populated :)
 
 my %ips = &getIPs;
-#ips{'80.87.131.48'} = ":)";
+#%ips{'80.87.131.48'} = ":)";
 
 my $resolver = Net::DNS::Resolver->new;
 
@@ -40,6 +40,7 @@ foreach(keys(%config)){
 	my (@here, @elsewhere, @neither);
 	foreach(@domains){
 	        my $site = $_;
+		last if $site =~ /^\s*$/;
 	        my $query = $resolver->search($site);
 	        if ($query){
 	                foreach my $rr ($query->answer){
@@ -52,7 +53,28 @@ foreach(keys(%config)){
 	                        }
 	                }
 	        }else{
-	                push(@neither,$resolver->errorstring);
+			if ( ($resolver->errorstring =~ /NOERROR/) && (`which host`) ){
+				my @hostOutput = `host $site 2>/dev/null`;
+				foreach(@hostOutput){
+					if (/$site has address (.*)\s*/){
+						my $address = $1;
+						if ($ips{$address}){
+							push(@here,$site);
+						}else{
+							push(@elsewhere, [$site,$address]);
+						}
+					}else{
+						if (/Host .* not found: (.*)/){
+							push(@neither,"$1");
+						}else{
+							push(@neither,"host said: $_");
+						}
+					}
+				}
+				push (@neither,"host");
+			}else{
+		               push(@neither,$resolver->errorstring);
+			}
 		}
 	}
 

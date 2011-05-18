@@ -27,9 +27,11 @@ my $configFile = $ARGV[1];
 my $tempFile = $configFile."~";
 my $backupFile = $configFile."old";
 
-open (my $f, "<", $configFile);
-my @lines = <$f>;
-close($f);
+# Store a copy of the contents of the config file
+##Todo: lock this file
+open (my $conf, "<", $configFile);
+my @lines = <$conf>;
+close($conf);
 
 &commentOutVhost($documentRoot);
 
@@ -42,11 +44,8 @@ sub commentOutVhost() {
 		print "Vhost not found.\n";
 		exit 1;
 	}
-#		print "Found midst $midst\n";
 	my $beginning = &getBeginning($midst);
-#		print "Found beginning $beginning\n";	
 	my $end = &getEnd($midst);
-#		print "Found end $end\n";
 
 	if ($beginning < $end){
 		print "Found virtualhost:\n";

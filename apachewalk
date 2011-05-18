@@ -1,42 +1,56 @@
 #! /usr/bin/perl
 
+# apachewalk
+
+# 'Walks' your apache configuration beginning from the file defined 
+# in $conf. It follows all includes and prints to stdout everything 
+# that is neither comment nor include. It's aimed at piping to other 
+# utilities - grepping for repeated configuration, for example.
+
+# written by Avi (@avi.co) in 2009
+
+## Todo: test on things that aren't apache
+
 #Depends: perl (>= 5.10)
 
 # This is free software. It is distributed under the 
 # terms of the 2-clause BSD license. See ./license.txt.
 
-## Version 0.14
-
-## This script walks your apache configuration beginning from 
-## the file defined in $conf. It follows all includes and prints
-## to stdout everything that is neither comment nor include. It's 
-## aimed at piping to other utilities - grepping for repeated 
-## configuration, for example.
-
 use strict;
 use 5.010;
 use File::Basename;
+use Getopt::Std;
 
-##
-# Some less-popular config:
-
-## Default display 'mode':
-my $output = "both";
-
-## Separator between 'file' and 'line' column when printing both:
+# Set some defaults:
+my $printLine = 1;
+my $printFilename = 1;
+my $supressLeadingWhitespace = 0;
 my $filenameLineSeparator = "\t";
+my $includeRegexPattern = '^\s*Include\s*(\S+)\s*\n';
 
-## If non-zero, strips indentation from config file lines when printing.
-my $suppressLeadingWhitespace = 1;
+my %o;
+getopts('lfLFwWs:p:', \%o);
+$printLine = 1 if $o{l};
+$printLine = 0 if $o{L};
 
+$printFilename = 1 if $o{f};
+$printFilename = 0 if $o{F};
+
+$supressLeadingWhitespace = 1 if $o{W};
+$supressLeadingWhitespace = 0 if $o{w};
+
+<<<<<<< HEAD
 ## How we determine that a line is an 'Include' directive. Making this
 ## lower-case might make it work on PHP scripts, for example. 
 ## I can't work out how to stick the options in a variable, so we're not
 ## using that yet. Answers on a postcard, please.
 my $includeRegexPattern = "^Include\s*(\S*)\s*\n";
 ###my $includeRegexOptions = "";
+=======
+$filenameLineSeparator = $o{s} if $o{s};
+>>>>>>> c0433025fc44c5a8714c2ffff80c400cb171d755
 
-#{&usage(); exitif !$ARGV[0];
+$includeRegexPattern = $o{p} if $o{p};
 
 if (!$ARGV[0]){
 	&usage;
@@ -45,23 +59,6 @@ if (!$ARGV[0]){
 
 
 my $conf = $ARGV[0];
-
-$output = $ARGV[1] || $output;
-my ($printFilename, $printLine);
-given ($output){
-	when(/^b/i){
-		($printLine, $printFilename) = (1,1);
-	}
-	when(/^f/i){
-		$printLine = 0;
-		$printFilename = 1;
-	}
-	when(/^l/i){
-		$printLine = 1;
-		$printFilename = 0;
-	}
-}
-		
 
 &walk_file($conf);
 
@@ -83,12 +80,12 @@ sub walk_file() {
 	}
 
 	open (my $fh, "< $filename") or die ("Error opening file: $filename");
-
 	while(<$fh>){
 		given ($_){
 			when ((/^#/) || (/^$/)){
 				sleep 0;
 			}
+<<<<<<< HEAD
 			## By default, read this as
 			#    (/^Include/){
 #			when (m/$includeRegexPattern/){
@@ -96,6 +93,9 @@ sub walk_file() {
 			my $includeRegexPattern = "^Include\s*(.+)\n";
 			when (/$includeRegexPattern/i){
 #		when (/^Include\s*(.+)\n/i){
+=======
+			when (/$includeRegexPattern/i){
+>>>>>>> c0433025fc44c5a8714c2ffff80c400cb171d755
 				my $Includepath = $1;
 				if ($Includepath =~ m/^\//){
 					&include($Includepath);
@@ -107,11 +107,11 @@ sub walk_file() {
 			default{
 				if (($printLine == 1) && ($printFilename != 1)){
 					my $line = $_;
-					if($suppressLeadingWhitespace != 0){$line =~ s/^\s+//};
+					if($supressLeadingWhitespace != 0){$line =~ s/^\s+//};
 					print $line;
 				}elsif (($printLine == 1) && ($printFilename == 1)){
 					my $line = $_;
-					if($suppressLeadingWhitespace != 0){$line =~ s/^\s+//};
+					if($supressLeadingWhitespace != 0){$line =~ s/^\s+//};
 					print $filename.$filenameLineSeparator.$line;
 				}
 			}
@@ -164,27 +164,46 @@ sub usage {
 print <<END
 
 Usage:
-	apachewalk <FILE> [OUTPUT]
+	apachewalk [OPTIONS] <FILE> 
 
 Reads Apache configuration file at FILE, following any
-Include directives and outputs the complete configuration
-according to OUTPUT. 
+Include directives and outputs the complete configuration.
 
 FILE should be Apache's core configuration file. Often
 /etc/apache/httpd.conf or /etc/apache2/apache2.conf
 
-OUTPUT dictates the output format:
+Options are:
 
-file	print every filename included in the config
-line	print every line of configuration
-both	for each line of configuration, print the file it
-	was found in and the line found. Handy for grepping
-	for "where did I configure that?" type questions.
+  -f    Prefix each line of config with the file it was 
+        found in (default)
+  -F    Don't prefix each line of config with the file it
+        was found in
 
-current default is $output
+  -l	Print each line of config (default)
+  -L	Don't print any lines of config
 
-See the top of the script for instructions on altering this
-to work with other situations where some files include others.
+  -w    Preserve whitespace at the beginning of config 
+        lines (default)
+  -W    Don't preserve leading whitespace
+
+  -s SEPARATOR
+        Specify a separator to go between the filename and 
+	the config snippet on each line. Defaults to a tab 
+	character
+
+  -p PATTERN
+        Specify a Perl regex with which to identify lines 
+	that are simply include directives. When it matches, 
+	the `\$1` backreference is then assumed to be a
+	path to a file or directory. It is matched case 
+	insensitively (i.e. with /i).
+	Default is: 
+	  $includeRegexPattern
+	which is aimed at Apache config files. When 
+	changing this, be wary of the shell doing bad 
+	things to escaped characters. It might be safest
+	to just set \$includeRegexPattern which you can 
+	find declared at about line 31
 
 END
 

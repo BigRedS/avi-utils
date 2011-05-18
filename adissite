@@ -1,6 +1,23 @@
 #! /usr/bin/perl
 
-#Depends:
+# adissite
+
+# Meant as an equivalent of a2dissite for Apache  vhosts - comments
+# out a vhost definition in a file containing many vhosts. 
+#
+# Prompts before doing any writing, and leaves a backup file behind, 
+# too
+#
+# Expects to be given a documentroot as its first argument, and an 
+# apache config file as its second; does not follow include 
+# directives
+
+# Written by Avi (@avi.co) in 2009
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
+use strict;
 
 if(!$ARGV[1]){&usage();}
 
@@ -10,7 +27,7 @@ my $configFile = $ARGV[1];
 my $tempFile = $configFile."~";
 my $backupFile = $configFile."old";
 
-open ($f, "<", $configFile);
+open (my $f, "<", $configFile);
 my @lines = <$f>;
 close($f);
 
@@ -57,7 +74,7 @@ sub commentOut() {
 
 	rename($configFile, $backupFile) or die "Error backing up $configFile to $backupFile";
 
-	open($f, ">", $configFile) or die "Error opening $configFile for writing";
+	open(my $f, ">", $configFile) or die "Error opening $configFile for writing";
 
 	for(my $i=0; $i <= @lines; $i++){
 

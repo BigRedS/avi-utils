@@ -1,12 +1,28 @@
 #! /usr/bin/perl
 
+# activesites
+
+# Finds active and inactive sites configured on the local machine. 
+#
+# Requires a script which returns a list of configured domain names, such 
+# as my 'websites' script which is probably in this directory, but should be 
+# configured here:
+my $websitesScript = "./websites";
+#
+# Iterates through the output of my the above script and runs a DNS lookup 
+# on each to see if they point at any IP address configured on the system.
+# Then returns a list of these domains, categorised into "points here", 
+# "doesn't point here" and "error", with Net::DNS's error string if 
+# applicable
+
+# Written by Avi (@avi.co) in 2011
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
 use strict;
 use warnings;
 use Net::DNS;
-
-# I can't be arsed to rewrite or even copy and paste the find-configured-domains
-# code from here:
-my $websitesScript = "/home/avi/bin/work/katflap/websites";
 
 my $ifconfig = "/sbin/ifconfig";
 

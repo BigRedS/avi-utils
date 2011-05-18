@@ -1,11 +1,26 @@
 #! /usr/bin/perl
 
-# Does whois lookups, only returns the useful data.
+# whos
 
-# If there's only one argument, looks up that domain and gives human-readable output
-# If there's two or more arguments, returns a double-colon demarked table of output
+# Performs a whois lookup, returns only what you're probably interested 
+# in.
+# Can do bulk whois lookups, which is a really easy way to get yourself
+# blocked by a whois server :)
+# Expects a list of one or more domain names as arguments, if there's only
+# one you get nice human-readable output, if there's more than one you
+# get double-colon-delimited output for grepping or awking or whatever.
+
+# written by Avi (@avi.co) in 2010
+
+#Depends: whois (whois)
+
+# This is free software. It is distributed under the 
+# terms of the 2-clause BSD license. See ./license.txt.
+
 
 use strict;
+
+&usage() if !$ARGV[0];
 
 if (!$ARGV[1]){
 	my ($registrant,$registrar,$registeredOn,$renewal,$ns) = &GetDomainInfo($ARGV[0]);
@@ -118,4 +133,18 @@ sub GetDomainInfo(){
 		$registrar = "I can only do .uk .com .net .edu .org .biz .info .mobi and .tv domains"
 	}
 	return $registrant, $registrar, $registeredOn, $renewal, \@nameservers;
+}
+
+sub usage() {
+	print <<EOF;
+$0 does whois lookups and only returns interesting things
+
+USAGE:
+	$0 DOMAIN [DOMAIN DOMAIN DOMAIN...]
+
+If there's only one argument, it looks up that domain and produces 
+human-orientated output. If you supply multiple domains, it returns 
+double-colon delimited output intended for awk and the like.
+EOF
+exit 1;
 }

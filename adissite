@@ -8,9 +8,15 @@
 # Prompts before doing any writing, and leaves a backup file behind, 
 # too
 #
-# Expects to be given a documentroot as its first argument, and an 
-# apache config file as its second; does not follow include 
-# directives
+# Expects to be given a documentroot or a line number as its first 
+# argument, and an apache config file as its second; does not follow 
+# include directives
+#
+# If it's passed a document root, the *first* vhost found to use that
+# is assumed to be the one you're after. If it's passed a number, that
+# line is checked for a <VirtualHost> open tag and, if it's found, that
+# virtualhost is commented out. If there's no open tag on that line, 
+# the script die()s.
 
 # Written by Avi (@avi.co) in 2009
 
@@ -21,34 +27,50 @@ use strict;
 
 if(!$ARGV[1]){&usage();}
 
-my $documentRoot = $ARGV[0];
+my $match;
+if ($ARGV[0] =~ /^\d+$/){
+	$match = "line";
+}else{
+	$match = "docroot";
+}
+my $arg = $ARGV[0];
+
 my $configFile = $ARGV[1];
 
 my $tempFile = $configFile."~";
 my $backupFile = $configFile."old";
 
-open (my $f, "<", $configFile);
-my @lines = <$f>;
-close($f);
+# Store a copy of the contents of the config file
+##Todo: lock this file
+open (my $conf, "<", $configFile);
+my @lines = <$conf>;
+close($conf);
 
-&commentOutVhost($documentRoot);
+
+&commentOutVhost($arg, $match);
 
 
 sub commentOutVhost() {
-	my $documentRoot=shift;	
-		print "Looking for DocumentRoot $documentRoot\n";
-	my $midst;
-	unless ($midst = &getMidst($documentRoot)){
-		print "Vhost not found.\n";
-		exit 1;
-	}
-#		print "Found midst $midst\n";
-	my $beginning = &getBeginning($midst);
-#		print "Found beginning $beginning\n";	
-	my $end = &getEnd($midst);
-#		print "Found end $end\n";
+	my $arg=shift;	
 
-	if ($beginning < $end){
+		my $midst;
+		my($beginning, $end);
+		if ($match =~ /docroot/){
+			unless ($midst = &getMidst($arg)){
+				print "Vhost not found.\n";
+				exit 1;
+			}
+			$beginning = &getBeginning($midst);
+			$end = &getEnd($midst);
+		}elsif($match =~ /line/){
+			$beginning = $arg -1; # since we're faffing with arrays not files
+			unless ($lines[$beginning] =~ /\s*<\s*VirtualHost/i){
+				die "No vhost open tag found at line $arg";
+			}
+			$end = &getEnd($beginning);
+		}	
+	
+		if ($beginning < $end){
 		print "Found virtualhost:\n";
 		for (my $i=$beginning; $i<=$end; $i++){
 			print "\t$lines[$i]";

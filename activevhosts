@@ -1,0 +1,231 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Net::DNS;
+
+my $dir = $ARGV[0];
+my $output;
+
+my $ifconfig = "/sbin/ifconfig";
+my @files;
+
+
+my %config;
+
+if ( -d $dir){
+	opendir(my $d, $dir) or die "Error opening dir $dir";
+	@files = readdir($d);
+	@files = grep(!/^\./, @files);
+	closedir($d);
+	foreach(@files){
+		my $filepath = $dir."/".$_;
+		if( -d $filepath){
+			&readDir($filepath);	
+		}else{
+			&readFile($filepath);
+		}
+	}
+}elsif(-f $dir){
+	&readFile($dir);
+}else{
+	die "Argument doesn't seem to be a file or a directory: $dir";
+}
+
+
+# %config is now populated :)
+
+my %ips = &getIPs;
+#%ips{'80.87.131.48'} = ":)";
+
+my $resolver = Net::DNS::Resolver->new;
+
+my (%allHere, %noneHere, %someHere);
+
+my %results;
+foreach(keys(%config)){
+	my $vhost = $_;
+#	$vhost =~ s/\/\//\//g;
+	my @domains = @{$config{$vhost}};
+	if (!$domains[0] || $domains[0] !~ /.+/){
+		$domains[0] = "_";	
+	}
+	
+	my (@here, @elsewhere, @neither);
+	foreach(@domains){
+	        my $site = $_;
+		last if (($site =~ /^\s*$/) || ($site =~ /\*/) );
+	        my $query = $resolver->search($site);
+	        if ($query){
+	                foreach my $rr ($query->answer){
+	                        next unless $rr->type eq "A";
+	                        my $Arecord = $rr->address;
+	                        if($ips{$Arecord}){
+	                                push(@here,$site);
+	                        }else{
+	                                push(@elsewhere,[$site, $Arecord]);
+	                        }
+	                }
+	        }else{
+			if ( ($resolver->errorstring =~ /NOERROR/) && (`which host`) ){
+				my @hostOutput = `host -a $site 2>/dev/null`;
+				foreach(@hostOutput){
+					my $line = $_;
+					unless($line =~ /^$/){
+						if ($line =~ /$site has address (.*)\s*/){
+							my $address = $1;
+							if ($ips{$address}){
+								push(@here,$site);
+							}else{
+								push(@elsewhere, [$site,$address]);
+							}
+						}else{
+							if (/has no A-record/){
+								push(@neither, [$site, "no A record"]);
+							}elsif (/not found: (.+)/){
+								push(@neither, [$site, $1]);
+							}
+						}
+					}
+				}
+				push (@neither,[$site,"Unknown Error"]);
+			}else{
+		               push(@neither,[$site,$resolver->errorstring]);
+			}
+		}
+	}	
+
+	# Now we've been through all the domains in this vhost and
+	#  @here      contains all the domains pointing here
+	#  @elsewhere contains all the domains pointing elsewhere
+	#  @neither   contains broken domains - no A-records, expired etc.
+
+	# We want to output:
+	#  vhosts with *any* domains pointing here
+	#  vhosts with no domains pointing here (so elsewhere and errors)
+
+	# So we want some hashes thusly:
+	#
+	# $allHere{$vhost} = $servername
+	#  there's not really much point knowing which point here
+	#
+	# $someHere{$vhost} = $servername @here @nothere
+	#  I don't think we care *why* the ones that point elsewhere do
+	#
+	# $noneHere{$vhost @errors}
+	#  perhaps we care that some might be erroring for some reason?
+	
+	$vhost =~ s/\/\//\//;
+
+	if( (!@elsewhere) && (!@neither)){
+		#all point here
+		$allHere{$vhost} = $domains[0];
+
+	}elsif ( (@here) && ( (@neither) || (@elsewhere) ) ){
+		# some point here, and some either error or don't point here
+		my @bigarray = (@neither, @elsewhere);
+		$someHere{$vhost} = [$domains[0], @bigarray];
+	}elsif (!@here) {
+		my @array;
+		$array[0] = $domains[0];
+		$array[1] = [ @neither ];
+		$noneHere{$vhost} = [@array];
+	}else{
+		print "WTF? $vhost\n";
+	}
+
+}
+
+#print "All here\n";
+foreach(keys(%allHere)){
+	my $servername = $allHere{$_};
+	print "\t$_ ($servername)\n";
+}
+
+#print "Some here, others elsewhere\n";
+foreach(keys(%someHere)){
+	my $servername = ${$someHere{$_}[0]};
+	print "\t$_ ($servername)\n";
+}
+#print "None here\n";
+#foreach(keys(%noneHere)){
+#	my $servername = $noneHere{$_}[0];
+#	my @errors = @{$noneHere{$_}[1]};
+#
+#	print "\t$_ ($servername)\n";
+#
+#	if($errors[0]){
+#		print "\t\t";
+#		foreach my $error (@errors){
+#			print "$$error[0] ($$error[1]) ";
+#		}
+#		print "\n";
+#	}
+#}
+
+
+sub readDir() {
+	my $dirpath = shift;
+	opendir(my $d, $dirpath);
+	my @files = readdir($d);
+	closedir($d);
+	
+	@files = grep(!/^\./, @files);
+	
+	foreach(@files){
+		my $filepath = $dirpath."/".$_;
+		&readFile($filepath);
+	}
+}
+
+
+sub readFile() {
+	my $filepath = shift;
+
+	my $lineCount = 0;
+	my $isVhost = 0;
+
+	my $vhostBegins = "";
+	my @serverAliases;
+	$serverAliases[0] = "";
+
+	open(my $f, "<", $filepath) or warn "Error opening file $filepath";
+	while(<$f>){
+
+		if ($isVhost > 0){
+			if ($_ =~ /^\s*ServerAlias\s+(\S+)/i){
+				@serverAliases = split(/\s+/, $1);
+			}
+			if ($_ =~ /^\s*ServerName\s+(\S+)/i){
+			$serverAliases[0] = $1;
+#			push(@serverAliases, $1);
+			}
+		}
+
+		if ($_ =~ /<VirtualH/i){
+			$isVhost = 1;
+			$vhostBegins = $lineCount + 1;
+		}
+		if ($_ =~ /\<\s*\/\s*VirtualHost/i){
+			$isVhost = 0;
+			my $key = $filepath.":".$vhostBegins;
+			$config{$key} = [@serverAliases];
+			@serverAliases = ();
+		}
+		$lineCount ++;
+	}
+		
+}
+
+sub getIPs(){
+        my %ips;
+        my $ifconfigCMD = "$ifconfig -a";
+        foreach(`$ifconfigCMD`){
+                if (/inet addr:(\S+)/){
+                        my $ip = $1;
+                        $ips{$ip} = ":)";
+                }
+        }
+        return %ips;
+}

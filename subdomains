@@ -56,10 +56,7 @@
 #exchange
 #dns0
 #dns1
-<<<<<<< HEAD
-=======
 #ThisIsATestForWildcardDNSRecords
->>>>>>> c0433025fc44c5a8714c2ffff80c400cb171d755
 #dev
 #support
 #login

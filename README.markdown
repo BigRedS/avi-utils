@@ -4,130 +4,78 @@ avi-utils
 This is a collection of scripts I've written that I find useful. I make no claims as to their worthiness for anything
 and gladly invite comments and criticism on any and all of them.
 
-*Files with names ending in '.pl' don't work.*
+* Files with names ending in '.pl' don't work. *
 
 
 All the scripts expect argument(s); run them with none to get usage information, or read this document. 
 
-I generally try not to deviate from perl core, but some of them need really common unixy utilities (top, grep etc),
+I generally try to not deviate from perl core, but some of them need really common unixy utilities (top, grep etc),
 which are mentioned in comments at the top of each script. Only apachewalk requires perl 5.10 but, seriously, it's 
-2010 and even Debian Stable's got it. Which reminds me, these all assume a debianish system. I don't actually know
-how others differ from this (except that non-linuxes will need to change the iptables command in allowhost), but it
-shouldn't be too difficult.
+2010 and even Debian Stable's got it. Which reminds me, these all assume a debianish system. 
 
 adissite
 --------
 
-  adissite [DocumentRoot] [file]
-
-  Identifies VirtualHosts in the file specified by their
-  DocumentRoot definition. Based on a string comparison. 
-  Do not include the 'DocumentRoot' part.
-
-
-
-Parses an apache 1.x config file looking for the virtualhost defined by the supplied DocumentRoot, then offers to comment
-it out for you. Supposed to be a clone of a2dissite for apache 1.x all-config-in-one-file style configuration, but I 
-can't help but make these things prompt before writing files.
-
+a2dissite for apache1 style config files. Given a path and an 
+httpd.conf it'll comment out the first not-already-commented-out 
+vhost in the file with that path as its document root
 
 allowhost
 ---------
 
-  alowhost <IP address>
-  
-  Removes IP address from DenyHosts' files, and restarts
-  DenyHosts. Prompts to check with iptables if the IP
-  address is not blocked by DenyHosts.
-
-
-
-Checks denyhosts' files for evidence of supplied IP address being blocked, and removes them. If it doesn't find any it 
-offers to search IPTables for it, too (for fail2ban etc.). Goes through all the daft files in /var/lib/denyhosts and
-restarts denyhosts at the end of it all; also copes with the same IP address appearing multiple times in the same file.
-
+Removes IP address from DenyHosts' files, and restarts
+DenyHosts.
 
 apachewalk
 ----------
 
-  apachewalk <FILE> [OUTPUT]
+Reads an Apache configuration file and, following any
+Include directives, outputs the complete configuration
+to stdout.
 
-  Reads Apache configuration file at FILE, following any
-  Include directives and outputs the complete configuration
-  according to OUTPUT. 
+cpmod
+-----
 
-  FILE should be Apache's core configuration file. Often
-  /etc/apache/httpd.conf or /etc/apache2/apache2.conf
+Handy script for copying a set of permissions from one hierarchy
+to another. Good for clearing up post accidental recursive chmods.
 
-  OUTPUT dictates the output format:
+dudt
+----
 
-  file	print every filename included in the config
-  line	print every line of configuration
-  both	for each line of configuration, print the file it
-        was found in and the line found. Handy for grepping
-        for "where did I configure that?" type questions.
+Runs du against a directory, sleeps, then runs it again and tells
+you what's changed, by how much, and how fast.
 
+dumpsplitter
+------------
 
-The script starts at a given apache config file, and prints out every line of config. It follows all Includes, so does actually 
-print out the whole config. 
+Splits big MySQL dumps into small per-table ones.
 
-By default, it prefixes each line of config with the name of the file it was found in, which is handy for grepping in 
-"where the hell is that Alias configured?" moments. As it comes across an include, it parses the included file (or the 
-files in the included directory) before carrying on with that file. I don't know if this is the same order as Apache 
-parses it, but it makes little difference since different scopes have different precedence. It is handy that it does 
-this when you make use of the fact that the regex by which it determines an 'Include' directive is configured at the 
-top of the file, you can alter this to use it on PHP scripts or anything else with a standard 'include' style directive 
-or command.
+mxhere
+------
 
-One day, adissite will accept input from it :)
-
+Checks whether anyone's likely to try to deliver mail for a particular
+domain to any of the IP addresses configured on the host it's run on.
 
 revup
 -----
 
-  revup <DOMAIN-NAME>
-        
-  Performs a DNS lookup for the domain name, then
-  a reverse lookup for the resulting IP address. 
-  Basically returns the canonical domain name for
-  the host at some given domain name.
-
-Given a domain name, does a reverse lookup on the first of its A records. Basically, attempts to find the canonical
-domain name of the server at some non-canonical domain name.
-
-
-subdomain
----------
-
-  Usage: subdomain [DOMAIN-NAME]
-  Checks for the existence of DNS records for common subdomains
-  Edit the script to update the dictionary to check against
-
-Tries to be a replacement for a zone transfer. It's designed for when someone wants you to take over the NS serving for
-their domain name, but they can't or won't get you the zone data. It basically does a dig on a bunch of popular 
-subdomains (which are stored at the top of the script) and returns the details if those records exist.
-If it looks like there's a wildcard domain, it says so and exists. One day it'll go through the dictionary and return all
-the subdomains *not* covered by the wildcard.
-
-qmail-activity
---------------
-
-Has no usage, which is incredibly of slack for me. This needs work but I never use it. It will, one day, be more 
-universal as regards what it looks for activity in.
-
-It goes through the contents of qmail's rcpthosts file, and checks each address against the maillogs, to find when that 
-domain last saw activity. By default, it looks for three months but doesn't notice if the logs aren't that old.
-
+Returns the canonical domain name for a host defined by a non-
+canonical domain name.
 
 subdomains
 ----------
 
-           Usage: subdomains [DOMAIN-NAME]
-           Checks for the existence of DNS records for common subdomains
-           Edit the script to update the dictionary to check against
+Checks for the existence of DNS records for common subdomains for when 
+you want an axfr but can't have one. Crude.
 
+teetime
+-------
 
-Has a list of popular subdomains at the top of the file. Given a domain name as an argument, checks for DNS records for
-each of the subdomains, returning DiG's output for any that exist. Handy for migrating domains in the absence of a 
-zone file or the like. It's probably an idea to have an incredibly unlikely domain name in there as a check against
-wildcards.
+Sort-of a buffered tail. I've no idea why I called it 'teetime'. Listens on
+stdout and stores a buffer of the last several lines, which it will print 
+to stdout on command. Can do time- and number-of-lines based buffer sizes
+
+whos
+----
+
+Abridged whois output. 

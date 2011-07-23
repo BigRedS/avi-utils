@@ -1,0 +1,99 @@
+#! /usr/bin/perl
+
+use strict;
+use Getopt::Std;
+$SIG{'INT'} = 'leave';
+$SIG{'HUP'} = 'printLines';
+
+my %opt;
+getopts('apPehl:s:f:', \%opt);
+my $maxLines = 0;
+my $maxSecs = 0;
+$maxLines = $opt{l};
+$maxSecs = $opt{s};
+if(exists($opt{h})){
+	print usage();
+	exit;
+}
+my $outFile;
+if(exists($opt{f})){
+	if (exists($opt{a})){
+		open($outFile, ">>", $opt{f}) or die ("Error opening $outFile for appending");
+	}else{
+		open($outFile, ">", $opt{f}) or die ("Error opening $outFile for writing");
+	}
+}elsif(exists($opt{e})){
+	open($outFile, ">&STDERR") or die ("Error opening STDERR for writing");
+}else{
+	open($outFile, ">-") or die ("Error opening STDOUT for writing");
+}
+
+print "$$\n" if exists($opt{p});
+print STDERR "$$\n" if exists($opt{P});
+
+my %lines;
+my $line;
+my $count=1;
+
+while(<STDIN>){
+	my $now = time();
+	$lines{$count}{text} = $_;
+	$lines{$count}{time} = $now;
+	my $numLines = scalar(keys(%lines));
+	my @lineNums = sort { $a <=> $b } (keys(%lines));
+	my $firstLineNo = $lineNums[0];
+	if ( ($maxLines > 0) && ($numLines > $maxLines) ){
+		delete ($lines{$firstLineNo});
+	}
+	if($maxSecs > 0){
+		my $oldest = $now - $maxSecs;
+		my $firstLineTime = $lines{$firstLineNo}{time};
+		while ($lines{$firstLineNo}{time} <= $oldest){
+			delete($lines{$firstLineNo});
+			@lineNums = sort { $a <=> $b } (keys(%lines));
+			$firstLineNo = $lineNums[0];
+		}
+	}
+	$count++;
+}
+leave();
+
+sub printLines{
+	foreach(sort(keys(%lines))){
+		print $outFile $lines{$_}{text};
+	}
+}
+
+sub leave{
+	printLines;
+	close($outFile);
+	exit(0);
+}
+sub usage{
+	return <<EOF;
+Usage:
+
+	teetime [ -s <seconds> ] [ -l <lines> ] [options]
+
+Prints to stdout approximately (but at least)  the last <lines> lines of 
+text it's fed through stdin, or those lines from the last <seconds> 
+seconds, whichever produces the fewer lines. 
+
+If passed a SIGINT (ctrl-c or kill -2) will close stdin and treat it and 
+exit as when reaching the end of stdin.
+
+Each default to infinity; if neither is provided it'll just print the whole
+thing.
+
+Other Options:
+
+  -p         print my PID to stdout before any other output
+  -P         print my PID to stderr before any other output
+  -e         print output to stderr rather than stdout
+  -f <file>  print output to a file rather than stdout
+  -a         append to file specified with -f rather than overwriting
+  -h         show this help
+
+
+EOF
+}

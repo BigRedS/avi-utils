@@ -1,0 +1,76 @@
+#! /usr/bin/perl
+
+# mxhere.pl
+
+# Script to determine whether the host it is run on is the primary MX for
+# a domain, or a list of domains. Probably called as:
+#
+# for i in $(cat /var/qmail/control/rcpthost); do ./mxhere.pl $i; done
+#
+# or just as
+#
+# ./mxhere.pl domain1 domain2 domain3 domain4
+#
+# If you're of a more manual disposition.
+
+# Requires libnet-dns-perl
+
+# Written by Avi in 2011.
+
+
+use Net::DNS;	# libnet-dns-perl
+use strict;
+use warnings;
+
+my @domains = @ARGV;
+my $res = Net::DNS::Resolver->new();
+
+my %ips;
+foreach(`ip a`){
+	if (/inet\s(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/){
+		$ips{$1} = $1
+	}
+}
+foreach(@domains){
+	my $domain = $_;
+
+	my $exchange;
+	my %records;
+
+	# See if we can find any MX records. If we do, we then resolve the one
+	# with the lowest priority into an IP address. If not, we just get the
+	# IP address for the A record.
+	# If that IP address exists in the list we defined above with ip -a, then
+	# this host is the exchange, so we print "here", else we print "elsewhere".
+	# If there's an error, we print that, too.
+
+	my @mx = mx($res, $domain);
+	if (@mx){
+		foreach(@mx){
+			my $d = $_;
+			$records{$d->preference}=$d->exchange;
+		}
+		# Lazy way of finding the lowest-priority record
+		foreach(sort(keys(%records))){
+			$exchange = $records{$_};
+			last;
+		}
+	}else{
+		$exchange = $domain
+	}
+	my $query = $res->search($exchange);
+	if ($query) {
+		foreach my $rr ($query->answer) {
+			next unless $rr->type eq "A";
+			if($ips{$rr->address}){
+				print "here       ";
+			}else{
+				print "elsewhere  ";
+			}
+			last;
+		}
+	}else{
+		print "F: ".$res->errorstring."  ";
+	}
+	print "$domain\n";
+}

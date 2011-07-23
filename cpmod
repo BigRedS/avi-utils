@@ -1,0 +1,158 @@
+#! /usr/bin/perl
+
+# cpmod
+
+# Copies file permissions and modes from one directory to (the equivalent 
+# parts in) another.
+
+# Written by Avi in 2011.
+
+use strict;
+use Getopt::Std;
+
+my %opts;
+getopts('d:s:f:p:haugUGM', \%opts);
+
+# d <dir>	destination for the permissions
+# s <dir>	source dir for permissions
+# f <file>	source file for permissions
+# p <file>	destination file for permissions
+# a 		use absolute path in destination
+# u 		convert uids to unames
+# g		convert gids to gnames
+# U		don't change user
+# G		don't change group
+# M		don't change mode
+
+if (exists($opts{h})){
+	print &usage;
+	exit 1;
+}
+
+
+# populate %perms with some permissions. 
+my %perms;
+
+# Data sources:
+if(exists($opts{s})){
+	if(-d $opts{s}){
+		chdir($opts{s});
+		scanDir('.');
+	}else{
+		print STDERR "ERROR: $opts{s} was passed as source directory but is not a directory\n\n";
+		print STDERR usage();
+		exit 1;
+	}
+}elsif(exists($opts{f})){
+	my $from = $opts{f};
+	if (-f $opts{f}){
+		open(my $fh, "<", $from) or die ("Error opening 'from' file $from: $!");
+		while(<$fh>){
+			my($mode,$uid,$gid,$file) = split(/\s/);
+			$perms{$file} = { mode => $mode, uid => $uid, gid => $gid };
+		}
+	}else{
+		print STDERR "ERROR: $opts{f} was passed as source file but is not a file\n\n";
+		print STDERR usage();
+		exit 1;
+	}
+}
+
+# Data destinations:
+foreach(sort(keys(%perms))){
+	my $file = $_;
+	my $mode = $perms{$_}->{mode};
+	my $uid = $perms{$_}->{uid};
+	my $gid = $perms{$_}->{gid};
+
+	if (exists($opts{p})){
+		print "$mode $uid $gid $file\n";
+	}
+	if( exists($opts{d})){
+		$file =~ s/^\.\///;
+		$file = $opts{d}."/".$file;
+		$file =~ s/\/\/+/\//g;
+		
+		unless(exists($opts{M})){
+			my $mode = oct($mode);
+			print "chmod($mode, $file);\n";
+		}
+		unless( (exists($opts{G})) && (exists($opts{U})) ){
+			$uid = getpwnam($uid) if $uid !~ /^\d+$/;
+			$gid = getgrnam($gid) if $gid !~ /^\d+$/;
+			$gid = -1 if (exists($opts{G}));
+			$uid = -1 if (exists($opts{U}));
+			print "chown($uid,$gid,$file);\n";
+		}
+	}
+}
+
+sub scanDir{
+	my $dir = shift;
+	opendir(my $dh, $dir) or die "Error opening directory $dir: $!";;
+	foreach(sort(readdir($dh))){
+		next if ($_ =~ /\.\.?/);
+		my $fullPath = $dir."/".$_;
+		if (-d $fullPath){
+			my ($file,$mode,$uid,$gid) = scanFile($fullPath);
+			$perms{$file} = { mode => $mode, uid => $uid, gid => $gid };
+			scanDir($fullPath);
+		}else{
+			my ($file,$mode,$uid,$gid) = scanFile($fullPath);
+			$perms{$file} = { mode => $mode, uid => $uid, gid => $gid };
+		}
+	}
+}
+
+sub scanFile{
+	my $file = shift;
+	my($mode,$uid,$gid)=(stat($file))[2,4,5];
+	$mode = sprintf"%04o", $mode & 07777;
+	if(exists($opts{u})){
+		$uid = getpwuid($uid);
+	}
+	if(exists($opts{g})){
+		$gid = getgrgid($gid);
+	}
+	$file =~ s/\/\/+/\//g;
+	return ($file, $mode, $uid, $gid);
+}
+
+sub usage{
+	return <<EOF;
+cpmod.pl
+
+Handy script for copying a set of permissions from one hierarchy
+to another. Good for clearing up post accidental recursive chmods.
+
+usage: cpmod.pl [options]
+
+ Options:
+	
+  -s <dir>  directory below which to read the permissions
+  -d <dir>  directory below which to apply the permissions
+  -p        print permissions (redirect to a file to use with -f)
+  -f <file> file to use as a source of permissions
+
+  -u         convert UIDs to unames when recording permissions
+  -g         convert GIDs to group names when converting permissions
+  -U         don't set owner user when applying permissions
+  -G         don't set owner group when applying permissions
+  -M         don't change permissions mode whn applying permissions
+
+Converting names to IDs for users and groups is mandatory when applying
+permissions (currently) so the users do need to exist beforehand, but
+don't need to have the same ID.
+
+Examples:
+
+  Between hosts:
+    cpmod.pl -s /home/avi -o > cpmod.out
+     < scp cpmod.out to the other host, on which >
+    cpmod.pl -f cpmod.out -d /home/avi
+
+  On the same host:
+   cpmod -s /backup/home/avi -d /home/avi
+
+EOF
+}

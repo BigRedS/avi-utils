@@ -21,6 +21,11 @@ $numberWidth += 2;
 
 $width = $width - $numberWidth;
 
+if($opts{c} !~ /.+/){
+	print usage();
+	exit;
+}
+
 my %prefix;
 $prefix{'number'} = sub{
 		my $number = shift;
@@ -62,8 +67,9 @@ while(1){
 
 	my ($prefix, $prefixLength) = &{$prefix{$prefix}}($number);;
 	if ($label){
-		my @output = qx/$opts{'l'}/;
-		$label = $output[0];
+		my $command = "$opts{'l'} 2>/dev/null";
+		my @output;
+		@output = qx/$command/;
 		chomp $label;
 		$prefix = $label." ".$prefix;
 		$prefixLength = length($prefix);
@@ -119,19 +125,24 @@ USAGE:
              graphed.
 
   -i [int]   Interval in seconds between executing the command. 
-             Default is 1s.
+             Default is 1.
 
-  -l [label] The label co
+  -l [cmd]   Define a label
+             cmd will be run and the first line of its output to
+             stdout will prepend each line. If a prefix is also 
+	     specified it will be prepended to the label.
+             graph for each line.
+
   -r [range] Range of the graph. This is the maximum number that will
-             fit in the graph. Vallues that exceed this will be 
-	     'overlap' the final character at the right hand edge.
+             fit in the graph. Vallues that exceed this will 'overlap' 
+	     the final character at the right hand edge.
 
   -p [prefix] Text to prefix each line of the chart with. Default is
-             'number' which simply prints the value of the number being
-	     displayed. Other options are:
-	       date:  prints a date and time YYYY-MM-DD HH:MM:SS
-	       time:  prints the time: HH:MM:SS
-	     these also print the value, too.
+              'number' which simply prints the value of the number being
+	      displayed. Other options are:
+	        date:  prints a date and time YYYY-MM-DD HH:MM:SS
+	        time:  prints the time: HH:MM:SS
+	      these also print the value, too.
    
   -w [with]  Set the width of the graph in characters. Defaults to
              80

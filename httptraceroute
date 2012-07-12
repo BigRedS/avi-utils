@@ -1,0 +1,67 @@
+#! /usr/bin/perl
+
+use strict;
+use 5.010;
+use LWP::UserAgent;
+use HTTP::Status;
+use Getopt::Std;
+use Data::Dumper;
+use Time::HiRes qw(gettimeofday);
+
+our $VERSION="0.01";
+
+my %opts;
+getopt(''. %opts);
+
+my $URL=shift;
+
+my $ua = LWP::UserAgent->new();
+$ua->agent("HTTPTraceroute/$VERSION ");
+$ua->max_redirect(0);
+
+my $t_start = gettimeofday;
+hop($URL);
+
+sub hop{
+	my $url = shift;
+	my $t_request = gettimeofday;
+	my $response = $ua->get($url);
+	my $t_response = gettimeofday;
+	my $t_totalElapsed = $t_response - $t_request;
+	my $t_thisRequest = $t_request - $t_start;
+	print statusLine($response,$url,$t_totalElapsed, $t_thisRequest);
+	my $nexthop = found($response);
+	if ($nexthop =~ /.+/){
+		hop($nexthop);
+	}
+}
+
+sub statusLine{
+	my $r = shift;
+	my $url = shift;
+	my $totalTime = shift;
+	my $thisRequestTime = shift;
+	my $line = sprintf("[ %.2fms ] ", $totalTime);
+	$line .= sprintf(" [ %.2fms ] ", $thisRequestTime);
+	$line.= getIP($r);
+	$line.=" ".$r->code;
+	if(is_redirect($r->code)){
+		$line.=" $url";
+	}
+	$line.="\n";
+	return $line;
+
+}
+
+sub found{
+	my $response = shift;
+	if(is_redirect($response->code)){
+		return $response->{'_headers'}->{'location'};
+	}
+	return;
+}
+
+sub getIP {
+	my $r = shift;
+	return $r->{'_headers'}->{'client-peer'};
+}

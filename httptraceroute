@@ -33,7 +33,7 @@ sub hop{
 	my $t_totalElapsed = $t_response - $t_start;
 	my $t_thisRequest = $t_response - $t_request;
 	my ($nexthop, $message) = found($response);
-	print statusLine($response,$url,$t_totalElapsed, $t_thisRequest, $message);
+	print statusLine($response,$url,$t_totalElapsed, $t_thisRequest, $message, $nexthop);
 	if ($nexthop =~ /.+/){
 		hop($nexthop);
 	}
@@ -41,7 +41,7 @@ sub hop{
 
 
 sub header{
-	return sprintf("%-9s %-9s %-22s %-30s %-3s %-23s %s\n", qw/total this socket server code meaning url/);
+	return sprintf("%-9s %-9s %-22s %-30s %-4s %-23s %s\n", qw/total this socket server code meaning nexthop/);
 }
 
 
@@ -51,17 +51,18 @@ sub statusLine{
 	my $totalTime = shift;
 	my $thisRequestTime = shift;
 	my $redirectMessage = shift;
+	my $nexthop = shift;
 	my $line = sprintf("%.4fms  ", $totalTime);
 	$line .= sprintf("%.4fms  ", $thisRequestTime);
 	$line .= sprintf("%-20s  ", getIP($r));
-	$line .= sprintf("%-30s  ", substr($r->header("server"), 0, 30));
-	$line .= sprintf("%-3s  ", $r->code);
+	$line .= sprintf(" %-30s", substr($r->header("server"), 0, 30));
+	$line .= sprintf(" %-3s  ", $r->code);
 	if (!$redirectMessage){
 #		$redirectMessage = (split(/\s+/, status_message($r->code)))[0];
 		$redirectMessage = status_message($r->code);
 	}
 	$line.= sprintf("%-21s  ", $redirectMessage);
-	$line.="$url";
+	$line.=" $nexthop";
 	$line.="\n";
 	return $line;
 

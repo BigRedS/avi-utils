@@ -32,14 +32,16 @@ sub hop{
 	my $t_response = gettimeofday;
 	my $t_totalElapsed = $t_response - $t_start;
 	my $t_thisRequest = $t_response - $t_request;
-	print statusLine($response,$url,$t_totalElapsed, $t_thisRequest);
-	my $nexthop = found($response);
+	my ($nexthop, $message) = found($response);
+	print statusLine($response,$url,$t_totalElapsed, $t_thisRequest, $message);
 	if ($nexthop =~ /.+/){
 		hop($nexthop);
 	}
 }
+
+
 sub header{
-	return sprintf("%-9s %-9s %-22s %-30s %-3s %s\n", qw/total this socket server code next-hop/);
+	return sprintf("%-9s %-9s %-22s %-30s %-3s %-23s %s\n", qw/total this socket server code meaning url/);
 }
 
 
@@ -48,14 +50,18 @@ sub statusLine{
 	my $url = shift;
 	my $totalTime = shift;
 	my $thisRequestTime = shift;
+	my $redirectMessage = shift;
 	my $line = sprintf("%.4fms  ", $totalTime);
 	$line .= sprintf("%.4fms  ", $thisRequestTime);
 	$line .= sprintf("%-20s  ", getIP($r));
 	$line .= sprintf("%-30s  ", substr($r->header("server"), 0, 30));
 	$line .= sprintf("%-3s  ", $r->code);
-	if(is_redirect($r->code)){
-		$line.="$url";
+	if (!$redirectMessage){
+#		$redirectMessage = (split(/\s+/, status_message($r->code)))[0];
+		$redirectMessage = status_message($r->code);
 	}
+	$line.= sprintf("%-21s  ", $redirectMessage);
+	$line.="$url";
 	$line.="\n";
 	return $line;
 
@@ -64,7 +70,17 @@ sub statusLine{
 sub found{
 	my $response = shift;
 	if(is_redirect($response->code)){
-		return $response->{'_headers'}->{'location'};
+		return $response->{'_headers'}->{'location'}, undef;
+	}
+	if(is_success($response->code)){
+		my @refreshes = grep (/http-equiv\s*=\s*.refresh./, split(/\n+/, $response->decoded_content));
+		if(@refreshes > 0){
+			foreach(@refreshes){
+				if($_ =~ /content=["']\d+;url=(\S*)["']>/i){
+					return $1, "http-equiv refresh";
+				}
+			}
+		}
 	}
 	return;
 }

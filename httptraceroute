@@ -14,39 +14,47 @@ my %opts;
 getopt(''. %opts);
 
 my $URL=shift;
+if ($URL !~ /^http/){
+	$URL = "http://$URL";
+}
 
 my $ua = LWP::UserAgent->new();
 $ua->agent("HTTPTraceroute/$VERSION ");
 $ua->max_redirect(0);
 
+print header();
 my $t_start = gettimeofday;
 hop($URL);
-
 sub hop{
 	my $url = shift;
 	my $t_request = gettimeofday;
 	my $response = $ua->get($url);
 	my $t_response = gettimeofday;
-	my $t_totalElapsed = $t_response - $t_request;
-	my $t_thisRequest = $t_request - $t_start;
+	my $t_totalElapsed = $t_response - $t_start;
+	my $t_thisRequest = $t_response - $t_request;
 	print statusLine($response,$url,$t_totalElapsed, $t_thisRequest);
 	my $nexthop = found($response);
 	if ($nexthop =~ /.+/){
 		hop($nexthop);
 	}
 }
+sub header{
+	return sprintf("%-9s %-9s %-22s %-30s %-3s %s\n", qw/total this socket server code next-hop/);
+}
+
 
 sub statusLine{
 	my $r = shift;
 	my $url = shift;
 	my $totalTime = shift;
 	my $thisRequestTime = shift;
-	my $line = sprintf("[ %.2fms ] ", $totalTime);
-	$line .= sprintf(" [ %.2fms ] ", $thisRequestTime);
-	$line.= getIP($r);
-	$line.=" ".$r->code;
+	my $line = sprintf("%.4fms  ", $totalTime);
+	$line .= sprintf("%.4fms  ", $thisRequestTime);
+	$line .= sprintf("%-20s  ", getIP($r));
+	$line .= sprintf("%-30s  ", substr($r->header("server"), 0, 30));
+	$line .= sprintf("%-3s  ", $r->code);
 	if(is_redirect($r->code)){
-		$line.=" $url";
+		$line.="$url";
 	}
 	$line.="\n";
 	return $line;
